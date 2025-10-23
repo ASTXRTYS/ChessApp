@@ -15,7 +15,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 40px 20px;
+            padding: 40px 20px 80px;
             color: white;
         }
 
@@ -26,7 +26,7 @@
 
         header {
             text-align: center;
-            margin-bottom: 60px;
+            margin-bottom: 40px;
         }
 
         h1 {
@@ -42,52 +42,90 @@
             font-weight: 400;
         }
 
+        .instructions {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 28px 32px;
+            border: 2px solid rgba(255, 255, 255, 0.16);
+            margin-bottom: 32px;
+            line-height: 1.7;
+        }
+
+        .instructions h2 {
+            font-size: 26px;
+            margin-bottom: 12px;
+        }
+
+        .instructions code {
+            background: rgba(0, 0, 0, 0.35);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 32px;
+        }
+
         .gallery {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 32px;
-            margin-bottom: 60px;
+            gap: 20px;
+            position: sticky;
+            top: 24px;
+            align-self: start;
         }
 
         .design-card {
             background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(18px);
             border-radius: 24px;
             overflow: hidden;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s ease, box-shadow 0.35s ease;
             cursor: pointer;
-            text-decoration: none;
             color: white;
             display: block;
+            text-align: left;
         }
 
-        .design-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
-            border-color: rgba(255, 255, 255, 0.4);
+        .design-card:hover,
+        .design-card:focus-visible {
+            transform: translateY(-6px);
+            border-color: rgba(255, 255, 255, 0.35);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.25);
+            outline: none;
+        }
+
+        .design-card[aria-pressed="true"] {
+            border-color: rgba(255, 255, 255, 0.55);
+            box-shadow: 0 28px 60px rgba(0, 0, 0, 0.35);
         }
 
         .card-preview {
-            height: 240px;
+            height: 180px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 64px;
+            font-size: 54px;
             position: relative;
-            overflow: hidden;
         }
 
         .card-preview::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
             opacity: 0;
-            transition: opacity 0.4s ease;
+            transition: opacity 0.35s ease;
         }
 
-        .design-card:hover .card-preview::before {
+        .design-card:hover .card-preview::before,
+        .design-card:focus-visible .card-preview::before,
+        .design-card[aria-pressed="true"] .card-preview::before {
             opacity: 1;
         }
 
@@ -96,6 +134,7 @@
             color: #000000;
             font-family: Arial Black, sans-serif;
             font-weight: 900;
+            letter-spacing: -0.02em;
         }
 
         .preview-glassmorphic {
@@ -107,6 +146,7 @@
             color: #C41E3A;
             font-family: system-ui, -apple-system;
             font-weight: 200;
+            letter-spacing: 0.06em;
         }
 
         .preview-cyberpunk {
@@ -114,24 +154,24 @@
             color: #FF006E;
             font-family: 'Courier New', monospace;
             font-weight: 700;
-            text-shadow: 0 0 20px currentColor;
+            text-shadow: 0 0 12px currentColor, 0 0 24px rgba(255, 0, 110, 0.65);
         }
 
         .card-info {
-            padding: 24px;
+            padding: 22px 24px 26px;
         }
 
         .card-title {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
             margin-bottom: 8px;
         }
 
         .card-description {
             font-size: 14px;
-            opacity: 0.8;
+            opacity: 0.85;
             line-height: 1.6;
-            margin-bottom: 16px;
+            margin-bottom: 18px;
         }
 
         .features {
@@ -141,70 +181,141 @@
         }
 
         .feature-tag {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.18);
             padding: 6px 12px;
-            border-radius: 12px;
-            font-size: 12px;
+            border-radius: 999px;
+            font-size: 11px;
             font-weight: 600;
+            letter-spacing: 0.04em;
         }
 
-        .instructions {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 32px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            margin-bottom: 40px;
+        .design-shell {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(24px);
+            border-radius: 28px;
+            border: 2px solid rgba(255, 255, 255, 0.18);
+            padding: 24px 28px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 680px;
         }
 
-        .instructions h2 {
-            font-size: 28px;
-            margin-bottom: 16px;
+        .shell-header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .instructions p {
-            font-size: 16px;
-            line-height: 1.8;
-            opacity: 0.9;
-            margin-bottom: 12px;
+        .shell-title {
+            font-size: 24px;
+            font-weight: 700;
         }
 
-        .instructions code {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .server-commands {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 20px;
-            border-radius: 12px;
-            margin-top: 20px;
-            font-family: 'Courier New', monospace;
+        .shell-subtitle {
+            opacity: 0.85;
             font-size: 14px;
         }
 
-        .server-commands .command {
-            margin: 8px 0;
-            padding: 8px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 4px;
+        .stack-note {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        .frame-stack {
+            position: relative;
+            flex: 1;
+            min-height: clamp(480px, 70vh, 820px);
+            border-radius: 20px;
+            overflow: hidden;
+            background: rgba(12, 12, 26, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .design-frame {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+            background: #000;
+        }
+
+        .design-frame.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .frame-actions {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .external-link {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.18);
+            border-radius: 999px;
+            transition: background 0.25s ease;
+        }
+
+        .external-link:hover,
+        .external-link:focus-visible {
+            background: rgba(255, 255, 255, 0.32);
+            outline: none;
         }
 
         footer {
             text-align: center;
             padding: 40px 0;
-            opacity: 0.7;
+            opacity: 0.65;
+            font-size: 14px;
         }
 
-        @media (max-width: 768px) {
-            .gallery {
+        @media (max-width: 1040px) {
+            .layout {
                 grid-template-columns: 1fr;
             }
 
-            header {
-                margin-bottom: 40px;
+            .gallery {
+                position: static;
+            }
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 32px 16px 60px;
+            }
+
+            .design-card {
+                border-radius: 20px;
+            }
+
+            .card-preview {
+                height: 150px;
+                font-size: 44px;
+            }
+
+            .design-shell {
+                padding: 20px;
+                border-radius: 22px;
+            }
+
+            .frame-stack {
+                min-height: 440px;
             }
         }
     </style>
@@ -213,111 +324,253 @@
     <div class="container">
         <header>
             <h1>Chess Clock Design Gallery</h1>
-            <p class="subtitle">Four unique mobile-first designs with advanced interactions</p>
+            <p class="subtitle">Four complete single-file experiences. Switch tabs to explore each aesthetic.</p>
         </header>
 
         <div class="instructions">
-            <h2>🚀 How to Launch</h2>
-            <p>Each design runs on its own local server. Use the commands below to start them:</p>
+            <h2>🚀 One Command Local Preview</h2>
+            <p>Serve the entire gallery from one origin, then explore each design without juggling ports.</p>
+            <p><code>python3 -m http.server 8000</code> &nbsp;<span class="stack-note">(run from this folder, then open <code>http://localhost:8000</code>)</span></p>
+            <p class="stack-note">Tip: Click the clock once it loads to lock keyboard shortcuts and haptics to that design.</p>
+        </div>
 
-            <div class="server-commands">
-                <div class="command"># Neo-Brutalist (Port 8001)</div>
-                <div class="command">cd /Users/Jason/Desktop/chess-clock/v2/neobrutalist && python3 -m http.server 8001</div>
+        <div class="layout">
+            <div class="gallery" role="tablist" aria-label="Design selector">
+                <button class="design-card" type="button" data-design="neobrutalist" role="tab" aria-selected="false" aria-pressed="false">
+                    <div class="card-preview preview-neobrutalist">BOLD</div>
+                    <div class="card-info">
+                        <div class="card-title">Neo-Brutalist</div>
+                        <div class="card-description">
+                            Aggressive, high-contrast typography, brutalist layout, glitch energy.
+                        </div>
+                        <div class="features">
+                            <span class="feature-tag">Gesture Controls</span>
+                            <span class="feature-tag">Haptics</span>
+                            <span class="feature-tag">Glitch FX</span>
+                            <span class="feature-tag">Session Stats</span>
+                        </div>
+                    </div>
+                </button>
 
-                <div class="command" style="margin-top: 16px;"># Glassmorphic (Port 8002)</div>
-                <div class="command">cd /Users/Jason/Desktop/chess-clock/v2/glassmorphic && python3 -m http.server 8002</div>
+                <button class="design-card" type="button" data-design="glassmorphic" role="tab" aria-selected="false" aria-pressed="false">
+                    <div class="card-preview preview-glassmorphic">✨</div>
+                    <div class="card-info">
+                        <div class="card-title">Glassmorphic</div>
+                        <div class="card-description">
+                            Frosted layers, pastel gradients, floating panels, ultra-smooth interactions.
+                        </div>
+                        <div class="features">
+                            <span class="feature-tag">Glass Blur</span>
+                            <span class="feature-tag">Theme Picker</span>
+                            <span class="feature-tag">Breathing Animations</span>
+                            <span class="feature-tag">Gestures</span>
+                        </div>
+                    </div>
+                </button>
 
-                <div class="command" style="margin-top: 16px;"># Japanese Zen (Port 8003)</div>
-                <div class="command">cd /Users/Jason/Desktop/chess-clock/v2/japanese-zen && python3 -m http.server 8003</div>
+                <button class="design-card" type="button" data-design="japanese-zen" role="tab" aria-selected="false" aria-pressed="false">
+                    <div class="card-preview preview-zen">禅</div>
+                    <div class="card-info">
+                        <div class="card-title">Japanese Zen</div>
+                        <div class="card-description">
+                            Minimal asymmetry, breathing whitespace, ripple effects, and quiet energy.
+                        </div>
+                        <div class="features">
+                            <span class="feature-tag">Ripple FX</span>
+                            <span class="feature-tag">Breath Timer</span>
+                            <span class="feature-tag">Focus Mode</span>
+                            <span class="feature-tag">Zen Soundscape</span>
+                        </div>
+                    </div>
+                </button>
 
-                <div class="command" style="margin-top: 16px;"># Cyberpunk (Port 8004)</div>
-                <div class="command">cd /Users/Jason/Desktop/chess-clock/v2/cyberpunk && python3 -m http.server 8004</div>
+                <button class="design-card" type="button" data-design="cyberpunk" role="tab" aria-selected="false" aria-pressed="false">
+                    <div class="card-preview preview-cyberpunk">NEON</div>
+                    <div class="card-info">
+                        <div class="card-title">Cyberpunk Neon</div>
+                        <div class="card-description">
+                            CRT scanlines, neon glow, combo systems, and retro-futuristic pulse.
+                        </div>
+                        <div class="features">
+                            <span class="feature-tag">CRT FX</span>
+                            <span class="feature-tag">Glitch Trails</span>
+                            <span class="feature-tag">Combo Meter</span>
+                            <span class="feature-tag">8-bit Audio</span>
+                        </div>
+                    </div>
+                </button>
             </div>
 
-            <p style="margin-top: 20px;">Or click the cards below to open them directly (servers must be running):</p>
+            <section class="design-shell" aria-live="polite">
+                <div class="shell-header">
+                    <div>
+                        <div class="shell-title" data-active-title>Neo-Brutalist</div>
+                        <div class="shell-subtitle" data-active-description>Bold borders, hard edges, unapologetic typographic punch.</div>
+                    </div>
+                    <a class="external-link" href="./neobrutalist/index.html" target="_blank" rel="noopener" data-external-link>
+                        Open design in new tab →
+                    </a>
+                </div>
+
+                <div class="frame-stack" data-frame-stack>
+                    <!-- iframes are inserted dynamically to preserve state between switches -->
+                </div>
+
+                <div class="frame-actions">
+                    <span>Keyboard: Space to pause/resume · R to reset · F to flip</span>
+                    <span>Need multitouch? Load the design in a new tab and go fullscreen.</span>
+                </div>
+            </section>
         </div>
 
-        <div class="gallery">
-            <!-- Neo-Brutalist -->
-            <a href="http://localhost:8001" class="design-card" target="_blank">
-                <div class="card-preview preview-neobrutalist">
-                    BOLD
-                </div>
-                <div class="card-info">
-                    <div class="card-title">Neo-Brutalist</div>
-                    <div class="card-description">
-                        Aggressive design with thick borders, maximum contrast, and bold typography. Inspired by brutalist architecture and Swiss design.
-                    </div>
-                    <div class="features">
-                        <span class="feature-tag">Gesture Controls</span>
-                        <span class="feature-tag">Haptic Feedback</span>
-                        <span class="feature-tag">Session Stats</span>
-                        <span class="feature-tag">Sound FX</span>
-                    </div>
-                </div>
-            </a>
+        <footer>
+            Built as four standalone single-file apps. This gallery simply hosts them side-by-side.
+        </footer>
+    </div>
 
-            <!-- Glassmorphic -->
-            <a href="http://localhost:8002" class="design-card" target="_blank">
-                <div class="card-preview preview-glassmorphic">
-                    ✨
-                </div>
-                <div class="card-info">
-                    <div class="card-title">Glassmorphic</div>
-                    <div class="card-description">
-                        Soft, frosted glass surfaces with neumorphic elements. Pastel gradients and gentle animations create a calming experience.
-                    </div>
-                    <div class="features">
-                        <span class="feature-tag">Glass Blur</span>
-                        <span class="feature-tag">Theme Selector</span>
-                        <span class="feature-tag">Smooth Transitions</span>
-                        <span class="feature-tag">Gestures</span>
-                    </div>
-                </div>
-            </a>
+    <script>
+        const designs = {
+            'neobrutalist': {
+                name: 'Neo-Brutalist',
+                description: 'Bold borders, hard edges, unapologetic typographic punch.',
+                path: './neobrutalist/index.html'
+            },
+            'glassmorphic': {
+                name: 'Glassmorphic',
+                description: 'Frosted layers, pastel gradients, and effortless motion.',
+                path: './glassmorphic/index.html'
+            },
+            'japanese-zen': {
+                name: 'Japanese Zen',
+                description: 'Asymmetric calm, meditative pacing, and white space as a feature.',
+                path: './japanese-zen/index.html'
+            },
+            'cyberpunk': {
+                name: 'Cyberpunk Neon',
+                description: 'Neon glow, CRT scanlines, glitch energy, and arcade intensity.',
+                path: './cyberpunk/index.html'
+            }
+        };
 
-            <!-- Japanese Zen -->
-            <a href="http://localhost:8003" class="design-card" target="_blank">
-                <div class="card-preview preview-zen">
-                    禅
-                </div>
-                <div class="card-info">
-                    <div class="card-title">Japanese Zen</div>
-                    <div class="card-description">
-                        Extreme minimalism with kinetic energy. Asymmetric layout, ripple effects, origami animations, and falling cherry blossoms.
-                    </div>
-                    <div class="features">
-                        <span class="feature-tag">Ripple Effects</span>
-                        <span class="feature-tag">Cherry Blossoms</span>
-                        <span class="feature-tag">Focus Mode</span>
-                        <span class="feature-tag">Zen Sounds</span>
-                    </div>
-                </div>
-            </a>
+        const cards = Array.from(document.querySelectorAll('.design-card[data-design]'));
+        const activeTitle = document.querySelector('[data-active-title]');
+        const activeDescription = document.querySelector('[data-active-description]');
+        const externalLink = document.querySelector('[data-external-link]');
+        const frameStack = document.querySelector('[data-frame-stack]');
+        const preferred = localStorage.getItem('chess-clock-active-design');
+        const initialDesign = designs[preferred] ? preferred : 'neobrutalist';
+        const frameCache = new Map();
 
-            <!-- Cyberpunk -->
-            <a href="http://localhost:8004" class="design-card" target="_blank">
-                <div class="card-preview preview-cyberpunk">
-                    NEON
-                </div>
-                <div class="card-info">
-                    <div class="card-title">Cyberpunk Neon</div>
-                    <div class="card-description">
-                        Retro-futuristic 1980s arcade aesthetic. Neon glows, CRT effects, scan lines, glitch animations, and a combo system.
-                    </div>
-                    <div class="features">
-                        <span class="feature-tag">CRT Effects</span>
-                        <span class="feature-tag">Glitch FX</span>
-                        <span class="feature-tag">Combo System</span>
-                        <span class="feature-tag">8-bit Sounds</span>
-                    </div>
-                </div>
-            </a>
-        </div>
+        function ensureFrame(designKey) {
+            if (frameCache.has(designKey)) {
+                return frameCache.get(designKey);
+            }
 
-        <div class="instructions">
-            <h2>✨ Features Across All Designs</h2>
-            <p>• <strong>Mobile-First</strong> - Optimized for touch interactions and gestures</p>
+            const frame = document.createElement('iframe');
+            frame.setAttribute('title', designs[designKey].name + ' Chess Clock');
+            frame.className = 'design-frame';
+            frame.dataset.design = designKey;
+            frame.loading = 'lazy';
+            frame.src = designs[designKey].path;
+
+            frame.addEventListener('load', () => {
+                try {
+                    frame.contentWindow.focus();
+                } catch (err) {
+                    console.warn('Focus hint failed for', designKey, err);
+                }
+            }, { once: true });
+
+            frameStack.appendChild(frame);
+            frameCache.set(designKey, frame);
+            return frame;
+        }
+
+        function setActiveDesign(designKey, { focusFrame = true } = {}) {
+            if (!designs[designKey]) {
+                return;
+            }
+
+            const targetFrame = ensureFrame(designKey);
+
+            frameCache.forEach((frame, key) => {
+                const isActive = key === designKey;
+                frame.classList.toggle('active', isActive);
+                frame.setAttribute('aria-hidden', !isActive);
+                if (!isActive) {
+                    frame.blur();
+                }
+            });
+
+            cards.forEach(card => {
+                const isActive = card.dataset.design === designKey;
+                card.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                card.tabIndex = isActive ? 0 : -1;
+            });
+
+            activeTitle.textContent = designs[designKey].name;
+            activeDescription.textContent = designs[designKey].description;
+            externalLink.href = designs[designKey].path;
+            externalLink.textContent = `Open ${designs[designKey].name} in new tab →`;
+
+            localStorage.setItem('chess-clock-active-design', designKey);
+
+            if (focusFrame) {
+                requestAnimationFrame(() => {
+                    try {
+                        targetFrame.contentWindow.focus();
+                    } catch {
+                        targetFrame.focus({ preventScroll: true });
+                    }
+                });
+            }
+        }
+
+        function rotateDesign(offset) {
+            const currentIndex = cards.findIndex(card => card.getAttribute('aria-selected') === 'true');
+            const nextIndex = (currentIndex + offset + cards.length) % cards.length;
+            cards[nextIndex].focus();
+            cards[nextIndex].click();
+        }
+
+        cards.forEach(card => {
+            const designKey = card.dataset.design;
+
+            card.addEventListener('click', () => setActiveDesign(designKey));
+
+            card.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setActiveDesign(designKey);
+                } else if (event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    rotateDesign(1);
+                } else if (event.key === 'ArrowLeft') {
+                    event.preventDefault();
+                    rotateDesign(-1);
+                }
+            });
+        });
+
+        document.addEventListener('keydown', event => {
+            if (event.target.tagName === 'IFRAME') {
+                return;
+            }
+
+            if (event.key === 'ArrowRight' && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                rotateDesign(1);
+            } else if (event.key === 'ArrowLeft' && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                rotateDesign(-1);
+            }
+        });
+
+        setActiveDesign(initialDesign, { focusFrame: false });
+    </script>
+</body>
+</html>
             <p>• <strong>Gesture Controls</strong> - Swipe and tap to control timers</p>
             <p>• <strong>Haptic Feedback</strong> - Vibration on interactions (mobile)</p>
             <p>• <strong>Sound Effects</strong> - Unique audio for each design theme</p>

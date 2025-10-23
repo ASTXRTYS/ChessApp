@@ -4,28 +4,28 @@ Four unique, mobile-first chess clock designs showcasing different aesthetic app
 
 ## 🎨 Design Variations
 
-### 1. Neo-Brutalist (Port 8001)
+### 1. Neo-Brutalist (Tab: Neo-Brutalist / Path `/neobrutalist/`)
 **Bold, Aggressive, Maximum Contrast**
 - Thick 8px borders with drop shadows
 - Yellow (#FFFF00) and Cyan (#00FFFF) color scheme
 - Arial Black typography with massive font sizes
 - Glitch animations and brutalist aesthetic
 
-### 2. Glassmorphic (Port 8002)
+### 2. Glassmorphic (Tab: Glassmorphic / Path `/glassmorphic/`)
 **Soft, Frosted, Neumorphic**
 - Frosted glass effects with backdrop-filter blur
 - Soft pastel gradients
 - Multiple theme options
 - Smooth, breathing animations
 
-### 3. Japanese Zen (Port 8003)
+### 3. Japanese Zen (Tab: Japanese Zen / Path `/japanese-zen/`)
 **Minimal, Asymmetric, Kinetic**
 - Extreme white space and minimalism
 - Deep red (#C41E3A) accent color
 - Asymmetric layout
 - Water ripple effects and cherry blossoms
 
-### 4. Cyberpunk Neon (Port 8004)
+### 4. Cyberpunk Neon (Tab: Cyberpunk Neon / Path `/cyberpunk/`)
 **Retro-Futuristic, 1980s Arcade**
 - Neon pink and cyan glows
 - CRT scan lines and screen effects
@@ -35,12 +35,12 @@ Four unique, mobile-first chess clock designs showcasing different aesthetic app
 ## 🚀 Quick Start
 
 ```bash
-# Launch all servers at once
+# Serve the entire gallery from a single origin
 cd /Users/Jason/Desktop/chess-clock/v2
-./launch-all.sh
+python3 -m http.server 8000
 ```
 
-Then visit http://localhost:8001-8004 or open index.html for the gallery.
+Then open http://localhost:8000 to explore every design from one page.
 
 ## ✨ Shared Features
 
@@ -56,10 +56,10 @@ Then visit http://localhost:8001-8004 or open index.html for the gallery.
 
 ## 📱 Access
 
-- **Neo-Brutalist**: http://localhost:8001
-- **Glassmorphic**: http://localhost:8002
-- **Japanese Zen**: http://localhost:8003
-- **Cyberpunk**: http://localhost:8004
+- **Neo-Brutalist**: http://localhost:8000/neobrutalist/
+- **Glassmorphic**: http://localhost:8000/glassmorphic/
+- **Japanese Zen**: http://localhost:8000/japanese-zen/
+- **Cyberpunk**: http://localhost:8000/cyberpunk/
 
 ## ⚠️ IMPORTANT: Design Preservation
 
