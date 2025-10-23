@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profiles Module Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      background: #1a202c;
+      color: #e2e8f0;
+    }
+    h1 { color: #667eea; }
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+    input {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid #4a5568;
+      border-radius: 4px;
+      background: #2d3748;
+      color: #e2e8f0;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      background: #667eea;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #5a67d8; }
+    button.danger { background: #f56565; }
+    button.danger:hover { background: #e53e3e; }
+    .profile {
+      background: #2d3748;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+    .profile-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .profile-name {
+      font-size: 1.25rem;
+      font-weight: bold;
+    }
+    .profile-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid #4a5568;
+    }
+    .stat { text-align: center; }
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #667eea;
+    }
+    .stat-label {
+      font-size: 0.875rem;
+      color: #a0aec0;
+    }
+    .achievements {
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: #a0aec0;
+    }
+    .palette-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      background: #4a5568;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+    #events {
+      background: #2d3748;
+      padding: 1rem;
+      border-radius: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 0.875rem;
+      margin-top: 2rem;
+    }
+    .event {
+      padding: 0.25rem 0;
+      border-bottom: 1px solid #4a5568;
+    }
+    .event-name {
+      color: #48bb78;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Profiles Module Test</h1>
+
+  <div class="controls">
+    <input type="text" id="newName" placeholder="New profile name">
+    <button id="create">Create Profile</button>
+    <button id="load">Reload Profiles</button>
+    <button class="danger" id="clear">Clear Storage</button>
+  </div>
+
+  <div id="profiles"></div>
+
+  <h2>Event Log</h2>
+  <div id="events"></div>
+
+  <script type="module">
+    import { init, loadProfiles, createProfile, deleteProfile, getAllProfiles, selectPlayer } from './manager.js'
+    import { on } from '../../core/events.js'
+    import { clear } from './storage.js'
+
+    const profilesDiv = document.getElementById('profiles')
+    const eventsDiv = document.getElementById('events')
+
+    // Initialize module
+    init()
+
+    // Event logging
+    const logEvent = (eventName, data) => {
+      const eventEl = document.createElement('div')
+      eventEl.className = 'event'
+      eventEl.innerHTML = `<span class="event-name">${eventName}</span>: ${JSON.stringify(data, null, 2)}`
+      eventsDiv.prepend(eventEl)
+    }
+
+    // Listen to all profile events
+    on('profiles:loaded', data => logEvent('profiles:loaded', data))
+    on('profiles:created', data => logEvent('profiles:created', data))
+    on('profiles:deleted', data => logEvent('profiles:deleted', data))
+    on('profiles:updated', data => logEvent('profiles:updated', data))
+    on('profiles:selected', data => logEvent('profiles:selected', data))
+
+    // Render profiles
+    function render() {
+      const profiles = getAllProfiles()
+      profilesDiv.innerHTML = profiles.map(p => `
+        <div class="profile">
+          <div class="profile-header">
+            <div>
+              <span class="profile-name">${p.name}</span>
+              <span class="palette-badge">${p.palette}</span>
+            </div>
+            <div>
+              <button onclick="window.selectPlayer1(${p.id})">Select P1</button>
+              <button onclick="window.selectPlayer2(${p.id})">Select P2</button>
+              <button class="danger" onclick="window.deleteProfile(${p.id})">Delete</button>
+            </div>
+          </div>
+          <div class="profile-stats">
+            <div class="stat">
+              <div class="stat-value">${p.stats.gamesPlayed}</div>
+              <div class="stat-label">Games</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">${p.stats.wins}</div>
+              <div class="stat-label">Wins</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">${p.stats.losses}</div>
+              <div class="stat-label">Losses</div>
+            </div>
+          </div>
+          <div class="achievements">
+            Achievements: ${p.stats.achievements.length > 0 ? p.stats.achievements.join(', ') : 'None yet'}
+          </div>
+        </div>
+      `).join('')
+    }
+
+    // Global functions for inline onclick
+    window.deleteProfile = (id) => {
+      if (confirm('Delete this profile?')) {
+        deleteProfile(id)
+        render()
+      }
+    }
+
+    window.selectPlayer1 = (id) => {
+      selectPlayer(1, id)
+      alert(`Selected ${getAllProfiles().find(p => p.id === id).name} as Player 1`)
+    }
+
+    window.selectPlayer2 = (id) => {
+      selectPlayer(2, id)
+      alert(`Selected ${getAllProfiles().find(p => p.id === id).name} as Player 2`)
+    }
+
+    // Button handlers
+    document.getElementById('create').onclick = () => {
+      const name = document.getElementById('newName').value
+      if (name) {
+        createProfile(name)
+        document.getElementById('newName').value = ''
+        render()
+      } else {
+        alert('Please enter a profile name')
+      }
+    }
+
+    document.getElementById('load').onclick = () => {
+      loadProfiles()
+      render()
+    }
+
+    document.getElementById('clear').onclick = () => {
+      if (confirm('Clear all localStorage? This will delete all profiles!')) {
+        clear('*')
+        location.reload()
+      }
+    }
+
+    // Initial render
+    render()
+  </script>
+</body>
+</html>

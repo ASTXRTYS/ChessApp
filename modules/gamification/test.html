@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gamification Module Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a202c;
+      color: #e2e8f0;
+    }
+    h1 { color: #667eea; }
+    h2 { color: #48bb78; margin-top: 30px; }
+    .test-section {
+      background: #2d3748;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #5a67d8;
+    }
+    #output {
+      background: #1a202c;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .achievement {
+      background: #38a169;
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin: 5px 0;
+      font-weight: bold;
+    }
+    .xp-gain {
+      background: #4299e1;
+      padding: 8px 15px;
+      border-radius: 6px;
+      margin: 5px 0;
+    }
+    .level-up {
+      background: #f6ad55;
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin: 5px 0;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .stats {
+      background: #2d3748;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .error {
+      background: #f56565;
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin: 5px 0;
+    }
+    .success {
+      background: #48bb78;
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gamification Module Test Suite</h1>
+
+  <div class="test-section">
+    <h2>Quick Tests</h2>
+    <button id="testFirstBlood">Test First Blood</button>
+    <button id="testLightningReflexes">Test Lightning Reflexes</button>
+    <button id="testTimeBandit">Test Time Bandit</button>
+    <button id="testComebackKing">Test Comeback King</button>
+    <button id="testMarathonMaster">Test Marathon Master</button>
+    <button id="testZenMaster">Test Zen Master</button>
+    <button id="testSpeedDemon">Test Speed Demon</button>
+    <button id="testXPSystem">Test XP & Leveling</button>
+    <button id="testAll">Run All Tests</button>
+    <button id="clearOutput">Clear Output</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Current Stats</h2>
+    <div id="statsDisplay"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Event Log</h2>
+    <div id="output"></div>
+  </div>
+
+  <script type="module">
+    import { dispatch, get, ACTIONS } from '../../core/state.js'
+    import { on, emit } from '../../core/events.js'
+    import { init as initAchievements, checkAchievements, getAchievementProgress } from './achievements.js'
+    import { init as initXP, calculateMatchXP, addXP, getLevel, getLevelProgress } from './xp.js'
+    import { init as initStats, startMatch, recordMove, getMatchStats } from './stats.js'
+    import { CONFIG } from '../../core/config.js'
+
+    // Initialize modules
+    initAchievements()
+    initXP()
+    initStats()
+
+    const output = document.getElementById('output')
+    const statsDisplay = document.getElementById('statsDisplay')
+
+    function log(message, type = 'info') {
+      const div = document.createElement('div')
+      div.className = type
+      div.innerHTML = message
+      output.appendChild(div)
+      output.scrollTop = output.scrollHeight
+    }
+
+    function updateStatsDisplay() {
+      const progress = getAchievementProgress()
+      const level = getLevel()
+      const levelProgress = getLevelProgress()
+      const totalXP = get('totalXP')
+      const unlocked = get('unlockedAchievements')
+
+      statsDisplay.innerHTML = `
+        <div class="stats">
+          <strong>Level:</strong> ${level} (${Math.round(levelProgress * 100)}% to next)<br>
+          <strong>Total XP:</strong> ${totalXP}<br>
+          <strong>Achievements:</strong> ${progress.unlocked}/${progress.total} (${progress.percentage}%)<br>
+          <strong>Unlocked:</strong> ${unlocked.join(', ') || 'None yet'}
+        </div>
+      `
+    }
+
+    // Listen to gamification events
+    on('gamification:achievement-unlocked', (data) => {
+      log(`<div class="achievement">🏆 ${data.achievement.name} - ${data.achievement.description} (+${data.achievement.xp} XP)</div>`, 'achievement')
+      updateStatsDisplay()
+    })
+
+    on('gamification:xp-gained', (data) => {
+      log(`<div class="xp-gain">✨ +${data.amount} XP (${data.reason})</div>`, 'xp-gain')
+      updateStatsDisplay()
+    })
+
+    on('gamification:level-up', (data) => {
+      log(`<div class="level-up">⭐ LEVEL UP! You are now level ${data.level}!</div>`, 'level-up')
+      updateStatsDisplay()
+    })
+
+    // Test functions
+    function simulateMatch(config) {
+      log(`<strong>--- Starting Test: ${config.name} ---</strong>`)
+
+      startMatch()
+
+      const moves = []
+      for (let i = 0; i < config.moveCount; i++) {
+        const player = (i % 2) + 1
+        const moveTime = config.moveTimeFunc ? config.moveTimeFunc(i) : config.avgMoveTime
+        const timeRemaining = config.timeRemainingFunc ? config.timeRemainingFunc(i, player) : 100
+
+        moves.push({
+          player,
+          time: moveTime,
+          timeRemaining,
+          timestamp: Date.now() + i * 1000
+        })
+      }
+
+      const matchStats = {
+        startTime: Date.now(),
+        moves,
+        avgMoveTime: config.avgMoveTime,
+        longestThink: Math.max(...moves.map(m => m.time)),
+        fastestMove: Math.min(...moves.map(m => m.time))
+      }
+
+      const gameData = {
+        winner: config.winner || 1,
+        loser: config.loser || 2,
+        winnerTimeRemaining: config.winnerTimeRemaining || 60
+      }
+
+      checkAchievements(matchStats, gameData)
+
+      const xp = calculateMatchXP(matchStats)
+      addXP(xp, 'match_complete')
+
+      log(`<div class="success">✓ Test completed: ${matchStats.moves.length} moves, avg ${matchStats.avgMoveTime.toFixed(2)}s</div>`)
+    }
+
+    // Test: First Blood
+    document.getElementById('testFirstBlood').onclick = () => {
+      simulateMatch({
+        name: 'First Blood',
+        moveCount: 5,
+        avgMoveTime: 5,
+        winnerTimeRemaining: 60
+      })
+    }
+
+    // Test: Lightning Reflexes (10 moves under 3s)
+    document.getElementById('testLightningReflexes').onclick = () => {
+      simulateMatch({
+        name: 'Lightning Reflexes',
+        moveCount: 15,
+        avgMoveTime: 2.5,
+        moveTimeFunc: (i) => 2 + Math.random(), // 2-3 seconds
+        winnerTimeRemaining: 60
+      })
+    }
+
+    // Test: Time Bandit (win with 2+ min left)
+    document.getElementById('testTimeBandit').onclick = () => {
+      simulateMatch({
+        name: 'Time Bandit',
+        moveCount: 10,
+        avgMoveTime: 4,
+        winnerTimeRemaining: 150 // 2.5 minutes
+      })
+    }
+
+    // Test: Comeback King (win from <10s)
+    document.getElementById('testComebackKing').onclick = () => {
+      simulateMatch({
+        name: 'Comeback King',
+        moveCount: 20,
+        avgMoveTime: 5,
+        timeRemainingFunc: (i, player) => {
+          if (player === 1) {
+            // Player 1 goes down to 5s then wins
+            return i < 10 ? 50 - i * 4 : 8
+          }
+          return 100
+        },
+        winner: 1,
+        winnerTimeRemaining: 8
+      })
+    }
+
+    // Test: Marathon Master (50+ moves)
+    document.getElementById('testMarathonMaster').onclick = () => {
+      simulateMatch({
+        name: 'Marathon Master',
+        moveCount: 55,
+        avgMoveTime: 6,
+        winnerTimeRemaining: 30
+      })
+    }
+
+    // Test: Zen Master (no move over 10s)
+    document.getElementById('testZenMaster').onclick = () => {
+      simulateMatch({
+        name: 'Zen Master',
+        moveCount: 20,
+        avgMoveTime: 7,
+        moveTimeFunc: (i) => 5 + Math.random() * 4, // 5-9 seconds
+        winnerTimeRemaining: 40
+      })
+    }
+
+    // Test: Speed Demon (avg under 5s)
+    document.getElementById('testSpeedDemon').onclick = () => {
+      simulateMatch({
+        name: 'Speed Demon',
+        moveCount: 25,
+        avgMoveTime: 4.2,
+        moveTimeFunc: (i) => 3 + Math.random() * 2, // 3-5 seconds
+        winnerTimeRemaining: 80
+      })
+    }
+
+    // Test: XP System
+    document.getElementById('testXPSystem').onclick = () => {
+      log('<strong>--- Testing XP System ---</strong>')
+
+      const initialLevel = getLevel()
+      const initialXP = get('totalXP')
+
+      log(`Initial: Level ${initialLevel}, ${initialXP} XP`)
+
+      // Award some XP
+      addXP(50, 'test')
+      addXP(30, 'test')
+      addXP(40, 'test')
+
+      const newLevel = getLevel()
+      const newXP = get('totalXP')
+      const progress = getLevelProgress()
+
+      log(`After awards: Level ${newLevel}, ${newXP} XP`)
+      log(`Progress to next level: ${Math.round(progress * 100)}%`)
+      log('<div class="success">✓ XP system working correctly</div>')
+    }
+
+    // Test all
+    document.getElementById('testAll').onclick = () => {
+      log('<strong>=== Running Full Test Suite ===</strong>')
+
+      setTimeout(() => document.getElementById('testFirstBlood').click(), 100)
+      setTimeout(() => document.getElementById('testLightningReflexes').click(), 500)
+      setTimeout(() => document.getElementById('testTimeBandit').click(), 900)
+      setTimeout(() => document.getElementById('testComebackKing').click(), 1300)
+      setTimeout(() => document.getElementById('testMarathonMaster').click(), 1700)
+      setTimeout(() => document.getElementById('testZenMaster').click(), 2100)
+      setTimeout(() => document.getElementById('testSpeedDemon').click(), 2500)
+      setTimeout(() => document.getElementById('testXPSystem').click(), 2900)
+      setTimeout(() => {
+        log('<strong>=== Test Suite Complete ===</strong>')
+        updateStatsDisplay()
+      }, 3300)
+    }
+
+    // Clear output
+    document.getElementById('clearOutput').onclick = () => {
+      output.innerHTML = ''
+      log('Output cleared')
+    }
+
+    // Initial stats display
+    updateStatsDisplay()
+    log('Gamification test suite ready. Click a button to run tests.')
+  </script>
+</body>
+</html>

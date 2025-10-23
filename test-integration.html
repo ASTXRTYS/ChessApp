@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integration Test Console - Chess Clock V2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Consolas', monospace;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .test-section {
+            background: #1e293b;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #64748b;
+        }
+
+        .test-section.pass {
+            border-left-color: #10b981;
+        }
+
+        .test-section.fail {
+            border-left-color: #ef4444;
+        }
+
+        .test-section h2 {
+            color: #94a3b8;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .test-result {
+            font-size: 14px;
+            margin: 5px 0;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+        .test-result.pass {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .test-result.fail {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .test-result.info {
+            color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        #console {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        .controls {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Chess Clock V2 - Integration Test Console</h1>
+
+    <div class="controls">
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="testSettingsButton()">Test Settings Button</button>
+        <button onclick="testGameFlow()">Test Game Flow</button>
+        <button onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <div id="results"></div>
+    <div id="console">
+        <div>Console output will appear here...</div>
+    </div>
+
+    <script type="module">
+        import { enableDebug as enableEventDebug, getEvents, getListenerCount } from './core/events.js'
+        import { debugState, getState } from './core/state.js'
+
+        // Enable event debugging
+        enableEventDebug()
+
+        // Capture console output
+        const consoleDiv = document.getElementById('console')
+        const originalLog = console.log
+        const originalError = console.error
+        const originalWarn = console.warn
+
+        function log(type, ...args) {
+            const line = document.createElement('div')
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${type}: ${args.join(' ')}`
+            line.style.color = type === 'ERROR' ? '#ff6b6b' : type === 'WARN' ? '#ffd93d' : '#0f0'
+            consoleDiv.appendChild(line)
+            consoleDiv.scrollTop = consoleDiv.scrollHeight
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args)
+            log('LOG', ...args)
+        }
+
+        console.error = function(...args) {
+            originalError.apply(console, args)
+            log('ERROR', ...args)
+        }
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args)
+            log('WARN', ...args)
+        }
+
+        window.clearConsole = function() {
+            consoleDiv.innerHTML = '<div>Console cleared...</div>'
+        }
+
+        // Test functions
+        window.testSettingsButton = async function() {
+            const results = document.getElementById('results')
+            const section = document.createElement('div')
+            section.className = 'test-section'
+            section.innerHTML = '<h2>Settings Button Test</h2>'
+
+            try {
+                const settingsBtn = document.getElementById('settingsBtn')
+                const settingsPanel = document.getElementById('settingsPanel')
+
+                if (!settingsBtn) {
+                    throw new Error('Settings button not found')
+                }
+
+                if (!settingsPanel) {
+                    throw new Error('Settings panel not found')
+                }
+
+                // Check initial state
+                const initialState = settingsPanel.classList.contains('open')
+                section.innerHTML += `<div class="test-result info">Initial panel state: ${initialState ? 'open' : 'closed'}</div>`
+
+                // Click button
+                settingsBtn.click()
+
+                // Wait for animation
+                await new Promise(resolve => setTimeout(resolve, 100))
+
+                const afterClickState = settingsPanel.classList.contains('open')
+                section.innerHTML += `<div class="test-result ${afterClickState !== initialState ? 'pass' : 'fail'}">After click: ${afterClickState ? 'open' : 'closed'} (${afterClickState !== initialState ? 'PASS' : 'FAIL'})</div>`
+
+                // Click close button
+                const closeBtn = document.getElementById('closeSettings')
+                if (closeBtn) {
+                    closeBtn.click()
+                    await new Promise(resolve => setTimeout(resolve, 100))
+                    const finalState = settingsPanel.classList.contains('open')
+                    section.innerHTML += `<div class="test-result ${!finalState ? 'pass' : 'fail'}">After close click: ${finalState ? 'open' : 'closed'} (${!finalState ? 'PASS' : 'FAIL'})</div>`
+                }
+
+                section.classList.add('pass')
+
+            } catch (error) {
+                section.innerHTML += `<div class="test-result fail">ERROR: ${error.message}</div>`
+                section.classList.add('fail')
+            }
+
+            results.appendChild(section)
+        }
+
+        window.testGameFlow = async function() {
+            const results = document.getElementById('results')
+            const section = document.createElement('div')
+            section.className = 'test-section'
+            section.innerHTML = '<h2>Game Flow Test</h2>'
+
+            try {
+                const state = getState()
+                section.innerHTML += `<div class="test-result info">Initial state: activePlayer=${state.activePlayer}, isPaused=${state.isPaused}</div>`
+
+                // Click player 1 timer to start
+                const player1Timer = document.getElementById('player1')
+                if (!player1Timer) throw new Error('Player 1 timer not found')
+
+                player1Timer.click()
+                await new Promise(resolve => setTimeout(resolve, 100))
+
+                const afterStart = getState()
+                section.innerHTML += `<div class="test-result ${afterStart.activePlayer === 1 ? 'pass' : 'fail'}">After P1 click: activePlayer=${afterStart.activePlayer} (${afterStart.activePlayer === 1 ? 'PASS' : 'FAIL'})</div>`
+
+                // Check if timer is running
+                const initialTime = afterStart.player1Time
+                await new Promise(resolve => setTimeout(resolve, 1500))
+
+                const afterTick = getState()
+                const timeChanged = afterTick.player1Time < initialTime
+                section.innerHTML += `<div class="test-result ${timeChanged ? 'pass' : 'fail'}">Timer countdown: ${initialTime} → ${afterTick.player1Time} (${timeChanged ? 'PASS' : 'FAIL'})</div>`
+
+                // Switch to player 2
+                player1Timer.click()
+                await new Promise(resolve => setTimeout(resolve, 100))
+
+                const afterSwitch = getState()
+                section.innerHTML += `<div class="test-result ${afterSwitch.activePlayer === 2 ? 'pass' : 'fail'}">After switch: activePlayer=${afterSwitch.activePlayer} (${afterSwitch.activePlayer === 2 ? 'PASS' : 'FAIL'})</div>`
+
+                // Reset
+                const resetBtn = document.getElementById('resetBtn')
+                if (resetBtn) {
+                    resetBtn.click()
+                    await new Promise(resolve => setTimeout(resolve, 100))
+
+                    const afterReset = getState()
+                    section.innerHTML += `<div class="test-result ${afterReset.activePlayer === 0 ? 'pass' : 'fail'}">After reset: activePlayer=${afterReset.activePlayer} (${afterReset.activePlayer === 0 ? 'PASS' : 'FAIL'})</div>`
+                }
+
+                section.classList.add('pass')
+
+            } catch (error) {
+                section.innerHTML += `<div class="test-result fail">ERROR: ${error.message}</div>`
+                section.classList.add('fail')
+            }
+
+            results.appendChild(section)
+        }
+
+        window.runAllTests = async function() {
+            document.getElementById('results').innerHTML = ''
+            clearConsole()
+
+            console.log('=== Starting Integration Tests ===')
+
+            // Test 1: Module Initialization
+            const section1 = document.createElement('div')
+            section1.className = 'test-section'
+            section1.innerHTML = '<h2>Module Initialization</h2>'
+
+            const events = getEvents()
+            section1.innerHTML += `<div class="test-result pass">Event listeners registered: ${events.length}</div>`
+            events.forEach(event => {
+                section1.innerHTML += `<div class="test-result info">  - ${event}: ${getListenerCount(event)} listeners</div>`
+            })
+            section1.classList.add('pass')
+            document.getElementById('results').appendChild(section1)
+
+            // Test 2: Settings Button
+            await testSettingsButton()
+
+            // Test 3: Game Flow
+            await testGameFlow()
+
+            // Test 4: Event System
+            const section4 = document.createElement('div')
+            section4.className = 'test-section'
+            section4.innerHTML = '<h2>Event System Integration</h2>'
+
+            const criticalEvents = [
+                'ui:player-clicked',
+                'ui:pause-clicked',
+                'ui:reset-clicked',
+                'ui:settings-clicked',
+                'game:tick',
+                'game:victory',
+                'game:player-switched'
+            ]
+
+            criticalEvents.forEach(event => {
+                const count = getListenerCount(event)
+                const hasListeners = count > 0
+                section4.innerHTML += `<div class="test-result ${hasListeners ? 'pass' : 'fail'}">${event}: ${count} listener(s) (${hasListeners ? 'PASS' : 'FAIL'})</div>`
+            })
+
+            section4.classList.add('pass')
+            document.getElementById('results').appendChild(section4)
+
+            console.log('=== Tests Complete ===')
+        }
+
+        // Export for debugging
+        window.debugApp = {
+            getEvents,
+            getListenerCount,
+            debugState,
+            getState
+        }
+
+        console.log('Integration test console loaded. Run tests from the buttons above.')
+    </script>
+</body>
+</html>

@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Chess Clock - Glassmorphic</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --shadow-light: rgba(255, 255, 255, 0.5);
+            --shadow-dark: rgba(0, 0, 0, 0.2);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            background: var(--bg-gradient);
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translate(0, 0);
+            }
+            50% {
+                transform: translate(-20px, -20px);
+            }
+        }
+
+        /* Glass timer zones */
+        .timer-zone {
+            height: 50vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 40px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .timer-glass {
+            position: absolute;
+            inset: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 40px;
+            border: 2px solid var(--glass-border);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .timer-glass::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg,
+                rgba(255, 255, 255, 0.2) 0%,
+                transparent 50%,
+                rgba(0, 0, 0, 0.05) 100%);
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+
+        .timer-zone.active .timer-glass {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(30px) saturate(200%);
+            box-shadow:
+                0 16px 48px rgba(0, 0, 0, 0.15),
+                0 0 80px rgba(255, 255, 255, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            transform: scale(1.02);
+        }
+
+        .timer-zone.active .timer-glass::before {
+            opacity: 1;
+        }
+
+        .timer-zone.inactive .timer-glass {
+            opacity: 0.6;
+            transform: scale(0.98);
+        }
+
+        .timer-zone.p2 {
+            transform: rotate(180deg);
+        }
+
+        /* Time display */
+        .time-display {
+            font-size: clamp(72px, 20vw, 140px);
+            font-weight: 300;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+            position: relative;
+            z-index: 10;
+            text-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.2),
+                0 4px 16px rgba(0, 0, 0, 0.1);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .timer-zone.active .time-display {
+            animation: breathe 3s ease-in-out infinite;
+            font-weight: 400;
+        }
+
+        @keyframes breathe {
+            0%, 100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+            }
+            50% {
+                transform: scale(1.02);
+                filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.5));
+            }
+        }
+
+        /* Player label */
+        .player-label {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            z-index: 10;
+            padding: 8px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .timer-zone.p2 .player-label {
+            top: auto;
+            bottom: 40px;
+        }
+
+        /* Moves counter */
+        .moves-badge {
+            position: absolute;
+            top: 50px;
+            right: 40px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            z-index: 10;
+        }
+
+        .timer-zone.p2 .moves-badge {
+            top: auto;
+            bottom: 50px;
+            right: auto;
+            left: 40px;
+        }
+
+        /* Control panel */
+        #controlPanel {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 16px;
+            z-index: 100;
+            padding: 16px 24px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 30px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .glass-btn {
+            width: 56px;
+            height: 56px;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow:
+                0 4px 16px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.3), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .glass-btn:hover::before {
+            opacity: 1;
+        }
+
+        .glass-btn:active {
+            transform: scale(0.95);
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.15),
+                inset 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Settings Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(40px) saturate(180%);
+            border-radius: 32px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            margin-top: 40px;
+            margin-bottom: 40px;
+            box-shadow:
+                0 24px 48px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            position: relative;
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-title {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .modal-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 32px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 50%;
+            color: #666;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(0, 0, 0, 0.1);
+            color: #333;
+        }
+
+        .section {
+            margin-bottom: 32px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .time-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .soft-btn {
+            padding: 16px;
+            border: none;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #333;
+            box-shadow:
+                8px 8px 16px rgba(163, 177, 198, 0.3),
+                -8px -8px 16px rgba(255, 255, 255, 0.8);
+        }
+
+        .soft-btn:active {
+            box-shadow:
+                inset 4px 4px 8px rgba(163, 177, 198, 0.4),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+        }
+
+        /* Color palette */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .color-option {
+            aspect-ratio: 1;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow:
+                8px 8px 16px rgba(163, 177, 198, 0.3),
+                -8px -8px 16px rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .color-option:active {
+            transform: scale(0.95);
+            box-shadow:
+                inset 4px 4px 8px rgba(163, 177, 198, 0.4),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.5);
+        }
+
+        .color-option.selected {
+            box-shadow:
+                inset 4px 4px 8px rgba(163, 177, 198, 0.4),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.5),
+                0 0 0 3px rgba(255, 255, 255, 0.8);
+        }
+
+        /* Input fields */
+        input[type="number"], select {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            font-family: inherit;
+            color: #333;
+            box-shadow:
+                inset 4px 4px 8px rgba(163, 177, 198, 0.2),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.5);
+            margin-bottom: 12px;
+        }
+
+        input[type="number"]:focus, select:focus {
+            outline: none;
+            box-shadow:
+                inset 4px 4px 8px rgba(163, 177, 198, 0.3),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.6),
+                0 0 0 2px rgba(102, 126, 234, 0.3);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .submit-btn {
+            padding: 16px 24px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow:
+                8px 8px 16px rgba(163, 177, 198, 0.3),
+                -4px -4px 12px rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .submit-btn:active {
+            transform: scale(0.98);
+            box-shadow:
+                4px 4px 8px rgba(163, 177, 198, 0.4),
+                -2px -2px 6px rgba(255, 255, 255, 0.6);
+        }
+
+        /* Toggle switch */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            margin-bottom: 12px;
+            box-shadow:
+                6px 6px 12px rgba(163, 177, 198, 0.2),
+                -6px -6px 12px rgba(255, 255, 255, 0.6);
+        }
+
+        .toggle-label {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .toggle-switch {
+            width: 60px;
+            height: 32px;
+            border-radius: 16px;
+            background: rgba(200, 200, 200, 0.5);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow:
+                inset 3px 3px 6px rgba(163, 177, 198, 0.3),
+                inset -3px -3px 6px rgba(255, 255, 255, 0.5);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            background: white;
+            border-radius: 50%;
+            left: 3px;
+            top: 3px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow:
+                3px 3px 6px rgba(163, 177, 198, 0.4),
+                -3px -3px 6px rgba(255, 255, 255, 0.8);
+        }
+
+        .toggle-switch.on {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow:
+                inset 3px 3px 6px rgba(0, 0, 0, 0.2),
+                inset -3px -3px 6px rgba(255, 255, 255, 0.1);
+        }
+
+        .toggle-switch.on::after {
+            left: 31px;
+        }
+
+        /* Win modal */
+        .win-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .win-modal.show {
+            display: flex;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .win-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(40px) saturate(180%);
+            border-radius: 40px;
+            padding: 60px 40px;
+            text-align: center;
+            box-shadow:
+                0 32px 64px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes scaleIn {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .win-title {
+            font-size: clamp(48px, 12vw, 72px);
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .win-subtitle {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 32px;
+            color: #666;
+        }
+
+        .win-btn {
+            padding: 16px 48px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 24px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow:
+                8px 8px 16px rgba(163, 177, 198, 0.3),
+                -4px -4px 12px rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .win-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Low time effects */
+        .timer-zone.low-time-30 .timer-glass {
+            animation: warningPulse 2s ease-in-out infinite;
+        }
+
+        .timer-zone.low-time-10 .timer-glass {
+            animation: dangerPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes warningPulse {
+            0%, 100% {
+                box-shadow:
+                    0 16px 48px rgba(255, 193, 7, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            }
+            50% {
+                box-shadow:
+                    0 16px 48px rgba(255, 193, 7, 0.4),
+                    0 0 60px rgba(255, 193, 7, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            }
+        }
+
+        @keyframes dangerPulse {
+            0%, 100% {
+                box-shadow:
+                    0 16px 48px rgba(244, 67, 54, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            }
+            50% {
+                box-shadow:
+                    0 16px 48px rgba(244, 67, 54, 0.5),
+                    0 0 80px rgba(244, 67, 54, 0.4),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            }
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .stat-box {
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow:
+                6px 6px 12px rgba(163, 177, 198, 0.2),
+                -6px -6px 12px rgba(255, 255, 255, 0.6);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #999;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <!-- Player 2 Zone -->
+    <div class="timer-zone p2 inactive" data-player="2">
+        <div class="timer-glass"></div>
+        <div class="moves-badge" id="moves2">0 moves</div>
+        <div class="player-label" id="label2">Player 2</div>
+        <div class="time-display" id="time2">05:00</div>
+    </div>
+
+    <!-- Player 1 Zone -->
+    <div class="timer-zone p1 inactive" data-player="1">
+        <div class="timer-glass"></div>
+        <div class="time-display" id="time1">05:00</div>
+        <div class="player-label" id="label1">Player 1</div>
+        <div class="moves-badge" id="moves1">0 moves</div>
+    </div>
+
+    <!-- Control Panel -->
+    <div id="controlPanel">
+        <button class="glass-btn" onclick="openSettings()">⚙</button>
+        <button class="glass-btn" id="pauseBtn" onclick="togglePause()">⏸</button>
+        <button class="glass-btn" onclick="resetClock()">↻</button>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeSettings()">✕</button>
+            <h1 class="modal-title">Settings</h1>
+            <p class="modal-subtitle">Customize your game experience</p>
+
+            <div class="section">
+                <h2 class="section-title">Players</h2>
+                <select id="player1Select" onchange="selectPlayer(1, this.value)">
+                    <option value="">Select Player 1</option>
+                </select>
+                <select id="player2Select" onchange="selectPlayer(2, this.value)">
+                    <option value="">Select Player 2</option>
+                </select>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Time Control</h2>
+                <div class="time-grid">
+                    <button class="soft-btn" onclick="setTime(60)">1 min</button>
+                    <button class="soft-btn" onclick="setTime(180)">3 min</button>
+                    <button class="soft-btn" onclick="setTime(300)">5 min</button>
+                    <button class="soft-btn" onclick="setTime(600)">10 min</button>
+                    <button class="soft-btn" onclick="setTime(900)">15 min</button>
+                    <button class="soft-btn" onclick="setTime(1800)">30 min</button>
+                </div>
+                <div class="input-group">
+                    <input type="number" id="customMinutes" placeholder="Custom minutes" min="1">
+                    <button class="submit-btn" onclick="setCustomTime()">Set</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Background Theme</h2>
+                <div class="color-grid" id="themeGrid"></div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Features</h2>
+                <div class="toggle-row">
+                    <span class="toggle-label">Gesture Controls</span>
+                    <div class="toggle-switch on" onclick="toggleGestures()" id="gestureToggle"></div>
+                </div>
+                <div class="toggle-row">
+                    <span class="toggle-label">Sound Effects</span>
+                    <div class="toggle-switch on" onclick="toggleSound()" id="soundToggle"></div>
+                </div>
+                <div class="toggle-row">
+                    <span class="toggle-label">Haptic Feedback</span>
+                    <div class="toggle-switch on" onclick="toggleHaptic()" id="hapticToggle"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Session Stats</h2>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Games Played</div>
+                        <div class="stat-value" id="statGames">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Avg Time</div>
+                        <div class="stat-value" id="statAvgTime">--:--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Win Modal -->
+    <div class="win-modal" id="winModal">
+        <div class="win-content">
+            <div class="win-title" id="winTitle">Winner!</div>
+            <div class="win-subtitle" id="winSubtitle">Player 1 wins</div>
+            <button class="win-btn" onclick="closeWinModal()">New Game</button>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let player1Time = 300;
+        let player2Time = 300;
+        let player1Moves = 0;
+        let player2Moves = 0;
+        let activePlayer = 0;
+        let isPaused = true;
+        let interval = null;
+        let defaultTime = 300;
+        let audioContext = null;
+        let gesturesEnabled = true;
+        let soundEnabled = true;
+        let hapticEnabled = true;
+        let sessionGames = 0;
+        let totalGameTime = 0;
+
+        // Touch tracking
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        // Profiles
+        let profiles = [
+            { id: 1, name: 'Jason' },
+            { id: 2, name: 'Anthony' },
+            { id: 3, name: 'TaTa' },
+            { id: 4, name: 'Papi' },
+            { id: 5, name: 'Mama' }
+        ];
+        let selectedPlayer1 = null;
+        let selectedPlayer2 = null;
+
+        // Themes
+        const themes = [
+            { name: 'Purple Dream', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+            { name: 'Pink Sunset', gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
+            { name: 'Ocean Blue', gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
+            { name: 'Forest Green', gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' },
+            { name: 'Peach Glow', gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' },
+            { name: 'Aurora', gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' }
+        ];
+
+        // Init
+        function init() {
+            initAudio();
+            setupGestures();
+            renderThemes();
+            updatePlayerSelects();
+            updateDisplay();
+            updateStats();
+        }
+
+        // Audio
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type = 'click') {
+            if (!soundEnabled) return;
+            initAudio();
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+
+            if (type === 'click') {
+                osc.frequency.setValueAtTime(800, audioContext.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.15);
+            } else if (type === 'win') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, audioContext.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.6);
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.6);
+            }
+        }
+
+        function vibrate(pattern = 50) {
+            if (hapticEnabled && navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // Gestures
+        function setupGestures() {
+            const zones = document.querySelectorAll('.timer-zone');
+            zones.forEach(zone => {
+                zone.addEventListener('touchstart', handleTouchStart, { passive: false });
+                zone.addEventListener('touchend', handleTouchEnd, { passive: false });
+                zone.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchPlayer(parseInt(zone.dataset.player));
+                });
+            });
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            if (!gesturesEnabled) {
+                switchPlayer(parseInt(e.target.closest('.timer-zone').dataset.player));
+                return;
+            }
+
+            const touchEndY = e.changedTouches[0].clientY;
+            const touchDuration = Date.now() - touchStartTime;
+            const deltaY = touchEndY - touchStartY;
+
+            if (Math.abs(deltaY) > 50 && touchDuration < 500) {
+                switchPlayer(parseInt(e.target.closest('.timer-zone').dataset.player));
+            } else {
+                switchPlayer(parseInt(e.target.closest('.timer-zone').dataset.player));
+            }
+        }
+
+        // Timer
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            document.getElementById('time1').textContent = formatTime(player1Time);
+            document.getElementById('time2').textContent = formatTime(player2Time);
+            document.getElementById('moves1').textContent = `${player1Moves} moves`;
+            document.getElementById('moves2').textContent = `${player2Moves} moves`;
+
+            const zone1 = document.querySelector('.timer-zone.p1');
+            const zone2 = document.querySelector('.timer-zone.p2');
+
+            zone1.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+            zone2.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+
+            if (activePlayer === 1) {
+                zone1.classList.add('active');
+                zone2.classList.add('inactive');
+                if (player1Time <= 10) zone1.classList.add('low-time-10');
+                else if (player1Time <= 30) zone1.classList.add('low-time-30');
+            } else if (activePlayer === 2) {
+                zone2.classList.add('active');
+                zone1.classList.add('inactive');
+                if (player2Time <= 10) zone2.classList.add('low-time-10');
+                else if (player2Time <= 30) zone2.classList.add('low-time-30');
+            } else {
+                zone1.classList.add('inactive');
+                zone2.classList.add('inactive');
+            }
+
+            if (player1Time <= 0) {
+                stopClock();
+                showWinner(2);
+            } else if (player2Time <= 0) {
+                stopClock();
+                showWinner(1);
+            }
+        }
+
+        function tick() {
+            if (activePlayer === 1) player1Time--;
+            else if (activePlayer === 2) player2Time--;
+            updateDisplay();
+        }
+
+        function startClock() {
+            if (!interval && !isPaused) {
+                interval = setInterval(tick, 1000);
+            }
+        }
+
+        function stopClock() {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+            isPaused = true;
+            activePlayer = 0;
+            updatePauseButton();
+        }
+
+        function switchPlayer(player) {
+            if (player1Time <= 0 || player2Time <= 0) return;
+            if (activePlayer === player || activePlayer === 0) {
+                playSound('click');
+                vibrate(50);
+
+                if (activePlayer === 0) {
+                    activePlayer = player;
+                    isPaused = false;
+                } else {
+                    if (player === 1) player1Moves++;
+                    else player2Moves++;
+                    activePlayer = player === 1 ? 2 : 1;
+                }
+
+                if (!isPaused) startClock();
+                updateDisplay();
+                updatePauseButton();
+            }
+        }
+
+        function togglePause() {
+            if (activePlayer === 0 && isPaused) {
+                activePlayer = 1;
+                isPaused = false;
+                startClock();
+            } else {
+                isPaused = !isPaused;
+                if (isPaused) {
+                    stopClock();
+                    interval = null;
+                } else {
+                    startClock();
+                }
+            }
+            updateDisplay();
+            updatePauseButton();
+        }
+
+        function updatePauseButton() {
+            document.getElementById('pauseBtn').textContent = isPaused ? '▶' : '⏸';
+        }
+
+        function resetClock() {
+            stopClock();
+            if (player1Time < defaultTime || player2Time < defaultTime) {
+                sessionGames++;
+                totalGameTime += (defaultTime * 2 - player1Time - player2Time);
+                updateStats();
+            }
+            player1Time = defaultTime;
+            player2Time = defaultTime;
+            player1Moves = 0;
+            player2Moves = 0;
+            activePlayer = 0;
+            isPaused = true;
+            updateDisplay();
+            updatePauseButton();
+        }
+
+        function setTime(seconds) {
+            defaultTime = seconds;
+            resetClock();
+            closeSettings();
+        }
+
+        function setCustomTime() {
+            const minutes = parseInt(document.getElementById('customMinutes').value);
+            if (minutes && minutes > 0) {
+                defaultTime = minutes * 60;
+                resetClock();
+                closeSettings();
+            }
+        }
+
+        // Settings
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('show');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('show');
+        }
+
+        // Themes
+        function renderThemes() {
+            const grid = document.getElementById('themeGrid');
+            themes.forEach((theme, index) => {
+                const div = document.createElement('div');
+                div.className = 'color-option';
+                if (index === 0) div.classList.add('selected');
+                div.style.background = theme.gradient;
+                div.textContent = theme.name;
+                div.onclick = () => setTheme(theme, div);
+                grid.appendChild(div);
+            });
+        }
+
+        function setTheme(theme, element) {
+            document.body.style.background = theme.gradient;
+            document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+
+        // Players
+        function updatePlayerSelects() {
+            const opts = profiles.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            document.getElementById('player1Select').innerHTML = '<option value="">Select Player 1</option>' + opts;
+            document.getElementById('player2Select').innerHTML = '<option value="">Select Player 2</option>' + opts;
+        }
+
+        function selectPlayer(playerNum, profileId) {
+            const profile = profiles.find(p => p.id == profileId);
+            if (playerNum === 1) {
+                selectedPlayer1 = profile;
+                document.getElementById('label1').textContent = profile ? profile.name : 'Player 1';
+            } else {
+                selectedPlayer2 = profile;
+                document.getElementById('label2').textContent = profile ? profile.name : 'Player 2';
+            }
+        }
+
+        // Toggles
+        function toggleGestures() {
+            gesturesEnabled = !gesturesEnabled;
+            document.getElementById('gestureToggle').classList.toggle('on', gesturesEnabled);
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundToggle').classList.toggle('on', soundEnabled);
+        }
+
+        function toggleHaptic() {
+            hapticEnabled = !hapticEnabled;
+            document.getElementById('hapticToggle').classList.toggle('on', hapticEnabled);
+        }
+
+        // Stats
+        function updateStats() {
+            document.getElementById('statGames').textContent = sessionGames;
+            document.getElementById('statAvgTime').textContent = sessionGames > 0 ?
+                formatTime(Math.floor(totalGameTime / sessionGames)) : '--:--';
+        }
+
+        // Win
+        function showWinner(player) {
+            const name = player === 1 ?
+                (selectedPlayer1 ? selectedPlayer1.name : 'Player 1') :
+                (selectedPlayer2 ? selectedPlayer2.name : 'Player 2');
+            document.getElementById('winTitle').textContent = 'Winner!';
+            document.getElementById('winSubtitle').textContent = `${name} wins`;
+            document.getElementById('winModal').classList.add('show');
+            playSound('win');
+            vibrate([200, 100, 200]);
+        }
+
+        function closeWinModal() {
+            document.getElementById('winModal').classList.remove('show');
+            resetClock();
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePause();
+            } else if (e.code === 'KeyR') {
+                resetClock();
+            }
+        });
+
+        // Prevent zoom
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) e.preventDefault();
+            lastTouchEnd = now;
+        }, false);
+
+        init();
+    </script>
+</body>
+</html>

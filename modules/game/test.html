@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Module Test</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a202c;
+      color: #e2e8f0;
+    }
+    h1 {
+      color: #667eea;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #48bb78;
+      margin-top: 30px;
+    }
+    #output {
+      background: #2d3748;
+      border: 1px solid #4a5568;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 20px 0;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      margin: 8px 0;
+      padding: 8px;
+      border-left: 3px solid #667eea;
+      background: #1a202c;
+      border-radius: 4px;
+    }
+    .event {
+      border-left-color: #f6ad55;
+    }
+    .state {
+      border-left-color: #48bb78;
+    }
+    .error {
+      border-left-color: #fc8181;
+      color: #fc8181;
+    }
+    .status {
+      background: #2d3748;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 10px;
+    }
+    .status-item {
+      background: #1a202c;
+      padding: 10px;
+      border-radius: 4px;
+      border-left: 3px solid #667eea;
+    }
+    .status-item strong {
+      color: #a0aec0;
+      font-size: 0.85em;
+      text-transform: uppercase;
+    }
+    .status-item .value {
+      display: block;
+      font-size: 1.5em;
+      margin-top: 5px;
+      color: #e2e8f0;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #5a67d8;
+      transform: translateY(-1px);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    button.secondary {
+      background: #48bb78;
+    }
+    button.secondary:hover {
+      background: #38a169;
+    }
+    button.danger {
+      background: #fc8181;
+    }
+    button.danger:hover {
+      background: #f56565;
+    }
+    .test-section {
+      background: #2d3748;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .success {
+      color: #48bb78;
+    }
+    .timestamp {
+      color: #a0aec0;
+      font-size: 0.85em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Game Module Test Suite</h1>
+
+  <div class="status">
+    <h2>Game Status</h2>
+    <div class="status-grid" id="status"></div>
+  </div>
+
+  <div class="controls">
+    <button onclick="testInit()">1. Initialize</button>
+    <button onclick="testSetTime()" class="secondary">2. Set Time (10s)</button>
+    <button onclick="testPlayer1Click()">3. Player 1 Start</button>
+    <button onclick="testPlayer2Click()">4. Player 2 Click</button>
+    <button onclick="testPlayer1Click()">5. Player 1 Click</button>
+    <button onclick="testPause()" class="secondary">Pause/Resume</button>
+    <button onclick="testReset()" class="danger">Reset</button>
+  </div>
+
+  <h2>Event & State Log</h2>
+  <div id="output"></div>
+
+  <div class="test-section">
+    <h2>Automated Tests</h2>
+    <button onclick="runAutomatedTests()" class="secondary">Run All Tests</button>
+    <div id="test-results" style="margin-top: 15px;"></div>
+  </div>
+
+  <script type="module">
+    import { init, handlePlayerClick, setTime, resetGame, getStatus } from './engine.js'
+    import { on } from '../../core/events.js'
+    import { subscribe, get } from '../../core/state.js'
+    import { canPlayerSwitch, checkGameOver } from './rules.js'
+
+    const output = document.getElementById('output')
+    const statusDiv = document.getElementById('status')
+
+    let eventCount = 0
+    let stateCount = 0
+
+    // Log helper
+    function log(message, type = 'log') {
+      const entry = document.createElement('div')
+      entry.className = `log-entry ${type}`
+      const timestamp = new Date().toLocaleTimeString()
+      entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`
+      output.insertBefore(entry, output.firstChild)
+
+      // Keep only last 50 entries
+      while (output.children.length > 50) {
+        output.removeChild(output.lastChild)
+      }
+    }
+
+    // Update status display
+    function updateStatus() {
+      const status = getStatus()
+      statusDiv.innerHTML = `
+        <div class="status-item">
+          <strong>Initialized</strong>
+          <span class="value ${status.initialized ? 'success' : ''}">${status.initialized ? 'YES' : 'NO'}</span>
+        </div>
+        <div class="status-item">
+          <strong>Running</strong>
+          <span class="value ${status.running ? 'success' : ''}">${status.running ? 'YES' : 'NO'}</span>
+        </div>
+        <div class="status-item">
+          <strong>Active Player</strong>
+          <span class="value">${status.activePlayer === 0 ? 'None' : `Player ${status.activePlayer}`}</span>
+        </div>
+        <div class="status-item">
+          <strong>Paused</strong>
+          <span class="value">${status.isPaused ? 'YES' : 'NO'}</span>
+        </div>
+        <div class="status-item">
+          <strong>Player 1 Time</strong>
+          <span class="value">${status.player1Time}s</span>
+        </div>
+        <div class="status-item">
+          <strong>Player 2 Time</strong>
+          <span class="value">${status.player2Time}s</span>
+        </div>
+        <div class="status-item">
+          <strong>Player 1 Moves</strong>
+          <span class="value">${status.player1Moves}</span>
+        </div>
+        <div class="status-item">
+          <strong>Player 2 Moves</strong>
+          <span class="value">${status.player2Moves}</span>
+        </div>
+      `
+    }
+
+    // Listen to all events
+    const eventTypes = [
+      'game:initialized',
+      'game:started',
+      'game:tick',
+      'game:player-switched',
+      'game:low-time',
+      'game:critical-time',
+      'game:victory',
+      'game:paused',
+      'game:resumed',
+      'game:reset'
+    ]
+
+    eventTypes.forEach(eventName => {
+      on(eventName, (data) => {
+        eventCount++
+        log(`<span class="event">🔔 Event: <strong>${eventName}</strong> ${data ? JSON.stringify(data) : ''}</span>`, 'event')
+        updateStatus()
+      })
+    })
+
+    // Subscribe to all state changes
+    subscribe('*', (newState, oldState) => {
+      // Don't log every wildcard update
+      updateStatus()
+    })
+
+    // Subscribe to specific keys
+    const stateKeys = ['player1Time', 'player2Time', 'activePlayer', 'isPaused', 'player1Moves', 'player2Moves']
+    stateKeys.forEach(key => {
+      subscribe(key, (newValue, oldValue) => {
+        if (newValue !== oldValue) {
+          stateCount++
+          log(`<span class="state">📊 State: <strong>${key}</strong> changed from ${oldValue} to ${newValue}</span>`, 'state')
+        }
+      })
+    })
+
+    // Global functions for buttons
+    window.testInit = () => {
+      log('Initializing game engine...', 'log')
+      init()
+    }
+
+    window.testSetTime = () => {
+      log('Setting time to 10 seconds...', 'log')
+      setTime(10)
+    }
+
+    window.testPlayer1Click = () => {
+      log('Player 1 clicked their timer', 'log')
+      handlePlayerClick({ player: 1 })
+    }
+
+    window.testPlayer2Click = () => {
+      log('Player 2 clicked their timer', 'log')
+      handlePlayerClick({ player: 2 })
+    }
+
+    window.testPause = () => {
+      const isPaused = get('isPaused')
+      log(`${isPaused ? 'Resuming' : 'Pausing'} game...`, 'log')
+      // Emit UI event
+      import('../../core/events.js').then(({ emit }) => {
+        emit('ui:pause-clicked')
+      })
+    }
+
+    window.testReset = () => {
+      log('Resetting game...', 'log')
+      resetGame()
+    }
+
+    // Automated test suite
+    window.runAutomatedTests = async () => {
+      const resultsDiv = document.getElementById('test-results')
+      resultsDiv.innerHTML = '<p>Running tests...</p>'
+
+      const tests = []
+
+      // Test 1: Rules - canPlayerSwitch
+      tests.push({
+        name: 'Rules: Either player can start (activePlayer = 0)',
+        test: () => {
+          const result1 = canPlayerSwitch(1, 0)
+          const result2 = canPlayerSwitch(2, 0)
+          return result1 === true && result2 === true
+        }
+      })
+
+      tests.push({
+        name: 'Rules: Only active player can switch',
+        test: () => {
+          const result1 = canPlayerSwitch(1, 1) // Player 1 is active, can click
+          const result2 = canPlayerSwitch(2, 1) // Player 2 is not active, cannot click
+          return result1 === true && result2 === false
+        }
+      })
+
+      // Test 2: Rules - checkGameOver
+      tests.push({
+        name: 'Rules: Player 1 time = 0, Player 2 wins',
+        test: () => {
+          const result = checkGameOver(0, 100)
+          return result && result.winner === 2 && result.loser === 1
+        }
+      })
+
+      tests.push({
+        name: 'Rules: Player 2 time = 0, Player 1 wins',
+        test: () => {
+          const result = checkGameOver(100, 0)
+          return result && result.winner === 1 && result.loser === 2
+        }
+      })
+
+      tests.push({
+        name: 'Rules: Game continues when both have time',
+        test: () => {
+          const result = checkGameOver(100, 100)
+          return result === null
+        }
+      })
+
+      // Test 3: Engine initialization
+      tests.push({
+        name: 'Engine: Initializes correctly',
+        test: () => {
+          const status = getStatus()
+          return status.initialized === true
+        }
+      })
+
+      // Test 4: Engine state
+      tests.push({
+        name: 'Engine: Initial state is correct',
+        test: () => {
+          const status = getStatus()
+          return status.activePlayer === 0 && status.isPaused === true
+        }
+      })
+
+      // Run tests
+      const results = tests.map(({ name, test }) => {
+        try {
+          const passed = test()
+          return { name, passed, error: null }
+        } catch (error) {
+          return { name, passed: false, error: error.message }
+        }
+      })
+
+      // Display results
+      const passed = results.filter(r => r.passed).length
+      const total = results.length
+
+      let html = `<p><strong>Results: ${passed}/${total} tests passed</strong></p>`
+      html += '<ul style="list-style: none; padding: 0;">'
+      results.forEach(({ name, passed, error }) => {
+        const icon = passed ? '✅' : '❌'
+        html += `<li style="margin: 8px 0;">${icon} ${name}`
+        if (error) html += ` <span style="color: #fc8181;">(${error})</span>`
+        html += '</li>'
+      })
+      html += '</ul>'
+
+      resultsDiv.innerHTML = html
+    }
+
+    // Initialize on load
+    log('Test page loaded. Click "1. Initialize" to begin.', 'log')
+    updateStatus()
+  </script>
+</body>
+</html>

@@ -1,0 +1,490 @@
+/**
+ * Enhanced 2D Chess Clock - Mobile-First Styles
+ *
+ * Design Philosophy: Form Follows Function
+ * - Massive, readable timers
+ * - Smooth, natural animations
+ * - Touch-optimized interactions
+ * - Zero visual clutter
+ */
+
+:root {
+  /* Colors - Active Player */
+  --color-active-from: #667eea;
+  --color-active-to: #764ba2;
+  --color-active-glow: rgba(102, 126, 234, 0.4);
+
+  /* Colors - Inactive Player */
+  --color-inactive-from: #1e293b;
+  --color-inactive-to: #0f172a;
+  --color-inactive-text: #94a3b8;
+
+  /* Colors - States */
+  --color-warning: #f59e0b;
+  --color-critical: #ef4444;
+  --color-victory: #10b981;
+  --color-defeat: #dc2626;
+
+  /* Timing */
+  --duration-switch: 200ms;
+  --duration-tap: 100ms;
+  --easing-natural: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Spacing (Fluid) */
+  --spacing-xs: clamp(0.25rem, 1vw, 0.5rem);
+  --spacing-sm: clamp(0.5rem, 2vw, 1rem);
+  --spacing-md: clamp(1rem, 3vw, 2rem);
+  --spacing-lg: clamp(2rem, 5vw, 4rem);
+
+  /* Typography */
+  --font-timer: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Roboto', system-ui, sans-serif;
+  --font-label: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Roboto', system-ui, sans-serif;
+}
+
+/* ===== Base Styles ===== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-label);
+  background: #0f172a;
+  color: white;
+  overflow: hidden;
+  height: 100dvh; /* Dynamic viewport height */
+  height: 100vh; /* Fallback */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Chess Clock Container ===== */
+
+.chess-clock {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+/* ===== Timer Containers ===== */
+
+.timer-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; /* Disable double-tap zoom */
+  transition: all var(--duration-switch) var(--easing-natural);
+
+  /* Ensure minimum touch target */
+  min-height: calc(50vh - 20px);
+
+  /* Container query */
+  container-type: inline-size;
+  container-name: timer;
+}
+
+/* Player 2 (Top, Rotated) */
+.timer-container[data-player="2"] {
+  transform: rotate(180deg);
+  padding-top: max(env(safe-area-inset-top), 1rem);
+}
+
+/* Player 1 (Bottom) */
+.timer-container[data-player="1"] {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+/* ===== Timer States ===== */
+
+/* Inactive State */
+.timer-inactive {
+  background: linear-gradient(135deg, var(--color-inactive-from) 0%, var(--color-inactive-to) 100%);
+  opacity: 0.7;
+  transform: scale(0.98);
+  filter: blur(1px);
+}
+
+.timer-inactive .time-display {
+  color: var(--color-inactive-text);
+}
+
+.timer-inactive .player-label,
+.timer-inactive .moves-count {
+  opacity: 0.5;
+}
+
+/* Active State */
+.timer-active {
+  background: linear-gradient(135deg, var(--color-active-from) 0%, var(--color-active-to) 100%);
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+  box-shadow: inset 0 0 80px var(--color-active-glow);
+}
+
+.timer-active .time-display {
+  color: #ffffff;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+/* Tap Feedback */
+.timer-container:active {
+  transform: scale(0.97);
+  transition: transform var(--duration-tap) ease-out;
+}
+
+.timer-active:active {
+  transform: scale(0.98);
+}
+
+/* ===== Typography ===== */
+
+.timer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+}
+
+.player-label {
+  font-family: var(--font-label);
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  transition: opacity var(--duration-switch) var(--easing-natural);
+}
+
+.time-display {
+  font-family: var(--font-timer);
+  font-size: clamp(6rem, 20vw, 12rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  transition: all var(--duration-switch) var(--easing-natural);
+  will-change: transform;
+}
+
+.moves-count {
+  font-family: var(--font-label);
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  font-weight: 400;
+  opacity: 0.5;
+  transition: opacity var(--duration-switch) var(--easing-natural);
+}
+
+/* ===== Responsive Typography (Container Queries) ===== */
+
+@container timer (max-width: 400px) {
+  .time-display {
+    font-size: clamp(5rem, 18vw, 8rem);
+  }
+
+  .player-label {
+    font-size: clamp(1.25rem, 3.5vw, 2rem);
+  }
+
+  .moves-count {
+    font-size: clamp(0.875rem, 2.5vw, 1.25rem);
+  }
+}
+
+@container timer (min-width: 768px) {
+  .time-display {
+    font-size: clamp(10rem, 22vw, 16rem);
+  }
+
+  .player-label {
+    font-size: clamp(2rem, 4.5vw, 3rem);
+  }
+
+  .moves-count {
+    font-size: clamp(1.25rem, 3.5vw, 2rem);
+  }
+}
+
+/* ===== Warning States ===== */
+
+/* Low Time (< 30s) */
+.timer-warning {
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.85;
+    filter: brightness(1.1);
+  }
+}
+
+/* Critical Time (< 10s) */
+.timer-critical {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  animation: pulse-critical 1s ease-in-out infinite;
+}
+
+@keyframes pulse-critical {
+  0%, 100% {
+    opacity: 1;
+    filter: brightness(1.2);
+  }
+  50% {
+    opacity: 0.75;
+    filter: brightness(0.9);
+  }
+}
+
+/* ===== Control Panel ===== */
+
+.control-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  transition: all 300ms var(--easing-natural);
+}
+
+/* Hide controls during active game */
+.control-panel.minimized {
+  transform: translate(-50%, -50%) scale(0.6);
+  opacity: 0.3;
+}
+
+.control-panel.minimized:hover {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+.control-btn {
+  width: 3.5rem;
+  height: 3.5rem;
+  min-width: 48px; /* Touch target */
+  min-height: 48px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  background: rgba(51, 65, 85, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  transition: all 200ms var(--easing-natural);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+
+.control-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(51, 65, 85, 1);
+}
+
+.control-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* ===== Victory Modal ===== */
+
+.victory-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 300ms var(--easing-natural);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.victory-modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  padding: var(--spacing-lg);
+  border-radius: 1.5rem;
+  max-width: min(500px, 90vw);
+  text-align: center;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(102, 126, 234, 0.3);
+  animation: slideUp 400ms var(--easing-bounce);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ===== Loading State ===== */
+
+.loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  color: white;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid #667eea;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===== Accessibility ===== */
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus Visible (Keyboard Navigation) */
+.timer-container:focus-visible,
+.control-btn:focus-visible {
+  outline: 3px solid #667eea;
+  outline-offset: 4px;
+}
+
+/* ===== Desktop Layout (Optional Side-by-Side) ===== */
+
+@media (min-width: 1024px) and (orientation: landscape) {
+  .chess-clock.side-by-side {
+    flex-direction: row;
+  }
+
+  .chess-clock.side-by-side .timer-container {
+    width: 50%;
+    height: 100vh;
+  }
+
+  .chess-clock.side-by-side .timer-container[data-player="2"] {
+    transform: rotate(0);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .chess-clock.side-by-side .time-display {
+    font-size: clamp(12rem, 20vw, 20rem);
+  }
+}
+
+/* ===== Micro-Interactions ===== */
+
+/* Tap Ripple Effect */
+.timer-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center,
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 60%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 400ms ease-out;
+}
+
+.timer-container:active::after {
+  opacity: 1;
+  transition: opacity 0s;
+}
+
+/* Number Transition (When time updates) */
+.time-digit {
+  display: inline-block;
+  transition: transform 100ms ease-out;
+}
+
+.time-digit.updating {
+  animation: flipDigit 200ms ease-out;
+}
+
+@keyframes flipDigit {
+  0% {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: rotateX(90deg);
+    opacity: 0;
+  }
+  100% {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+}
+
+/* ===== Print Styles (for screenshots/sharing) ===== */
+
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  .control-panel,
+  .victory-modal {
+    display: none;
+  }
+}

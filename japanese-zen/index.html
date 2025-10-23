@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Chess Clock - Zen</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --white: #FFFFFF;
+            --black: #000000;
+            --red: #C41E3A;
+            --gray-light: #F5F5F5;
+            --gray-medium: #E0E0E0;
+            --gray-dark: #9E9E9E;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            background: var(--white);
+            position: relative;
+        }
+
+        /* Asymmetric layout */
+        .timer-zone {
+            height: 50vh;
+            display: flex;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            background: var(--white);
+            transition: background 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+            overflow: hidden;
+        }
+
+        .timer-zone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(0,0,0,0.01) 100%);
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .timer-zone.active::before {
+            opacity: 1;
+        }
+
+        .timer-zone.inactive {
+            opacity: 0.4;
+            filter: grayscale(1);
+        }
+
+        .timer-zone.p2 {
+            transform: rotate(180deg);
+        }
+
+        /* Ink brush divider */
+        .divider {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 2px;
+            background: var(--black);
+            transform: translateY(-50%);
+            z-index: 50;
+            box-shadow: 0 0 1px rgba(0,0,0,0.1);
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--red);
+            border-radius: 50%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .divider::before {
+            left: 40px;
+        }
+
+        .divider::after {
+            right: 40px;
+        }
+
+        /* Time display - asymmetric positioning */
+        .time-container {
+            position: absolute;
+            left: 8%;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+        }
+
+        .time-display {
+            font-size: clamp(64px, 16vw, 120px);
+            font-weight: 200;
+            letter-spacing: -0.03em;
+            color: var(--black);
+            font-variant-numeric: tabular-nums;
+            line-height: 0.9;
+            transition: all 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .timer-zone.active .time-display {
+            font-weight: 300;
+            animation: breathe 4s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.015);
+            }
+        }
+
+        /* Player label - minimal */
+        .player-label {
+            position: absolute;
+            right: 8%;
+            top: 50%;
+            transform: translateY(-50%);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 0.3em;
+            color: var(--gray-dark);
+            text-transform: uppercase;
+            z-index: 10;
+        }
+
+        /* Moves counter - subtle dot notation */
+        .moves-dots {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            display: flex;
+            gap: 6px;
+            z-index: 10;
+            flex-wrap: wrap;
+            max-width: 200px;
+            justify-content: flex-end;
+        }
+
+        .timer-zone.p2 .moves-dots {
+            bottom: auto;
+            top: 40px;
+            right: auto;
+            left: 40px;
+            justify-content: flex-start;
+        }
+
+        .move-dot {
+            width: 4px;
+            height: 4px;
+            background: var(--gray-dark);
+            border-radius: 50%;
+            opacity: 0;
+            animation: dotAppear 0.4s ease forwards;
+        }
+
+        @keyframes dotAppear {
+            from {
+                opacity: 0;
+                transform: scale(0);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Ripple effect on touch */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid var(--red);
+            pointer-events: none;
+            animation: rippleEffect 1.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+        }
+
+        @keyframes rippleEffect {
+            0% {
+                width: 0;
+                height: 0;
+                opacity: 1;
+            }
+            100% {
+                width: 400px;
+                height: 400px;
+                opacity: 0;
+            }
+        }
+
+        /* Cherry blossom particles for low time */
+        .petal {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--red);
+            border-radius: 50% 0;
+            opacity: 0.6;
+            pointer-events: none;
+            animation: fall linear forwards;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Control panel - minimal circle */
+        #controlPanel {
+            position: fixed;
+            bottom: 50%;
+            left: 50%;
+            transform: translate(-50%, 50%);
+            display: flex;
+            gap: 0;
+            z-index: 100;
+            background: var(--white);
+            border-radius: 50px;
+            padding: 4px;
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--gray-medium);
+            transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        #controlPanel.focus-mode {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .zen-btn {
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: transparent;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-dark);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .zen-btn:hover {
+            background: var(--gray-light);
+            color: var(--black);
+        }
+
+        .zen-btn:active {
+            transform: scale(0.92);
+        }
+
+        .zen-btn.active {
+            background: var(--red);
+            color: var(--white);
+        }
+
+        /* Settings Modal - minimal slide */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.98);
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+            padding: 40px 20px;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            animation: fadeIn 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            background: var(--white);
+            max-width: 500px;
+            width: 100%;
+            animation: slideUp 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: 300;
+            margin-bottom: 8px;
+            color: var(--black);
+            letter-spacing: -0.01em;
+        }
+
+        .modal-subtitle {
+            font-size: 13px;
+            color: var(--gray-dark);
+            margin-bottom: 48px;
+            font-weight: 400;
+        }
+
+        .close-btn {
+            position: fixed;
+            top: 40px;
+            right: 40px;
+            width: 44px;
+            height: 44px;
+            border: 1px solid var(--gray-medium);
+            background: var(--white);
+            border-radius: 50%;
+            color: var(--gray-dark);
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: var(--black);
+            color: var(--white);
+            border-color: var(--black);
+        }
+
+        .section {
+            margin-bottom: 56px;
+        }
+
+        .section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: var(--gray-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .time-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .zen-time-btn {
+            padding: 20px 16px;
+            border: 1px solid var(--gray-medium);
+            background: var(--white);
+            font-size: 15px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+            color: var(--black);
+            font-family: inherit;
+        }
+
+        .zen-time-btn:hover {
+            background: var(--black);
+            color: var(--white);
+            border-color: var(--black);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .zen-time-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Input fields */
+        input[type="number"], select {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-bottom: 1px solid var(--gray-medium);
+            background: transparent;
+            font-size: 15px;
+            font-weight: 400;
+            font-family: inherit;
+            color: var(--black);
+            margin-bottom: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="number"]:focus, select:focus {
+            outline: none;
+            border-bottom-color: var(--red);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .submit-btn {
+            padding: 16px 32px;
+            border: 1px solid var(--black);
+            background: var(--black);
+            color: var(--white);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .submit-btn:hover {
+            background: var(--red);
+            border-color: var(--red);
+        }
+
+        .submit-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Toggle - minimal line */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .toggle-row:last-child {
+            border-bottom: none;
+        }
+
+        .toggle-label {
+            font-weight: 400;
+            font-size: 15px;
+            color: var(--black);
+        }
+
+        .toggle-switch {
+            width: 48px;
+            height: 24px;
+            border: 1px solid var(--gray-medium);
+            border-radius: 12px;
+            background: var(--white);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: var(--gray-dark);
+            border-radius: 50%;
+            left: 2px;
+            top: 2px;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .toggle-switch.on {
+            background: var(--red);
+            border-color: var(--red);
+        }
+
+        .toggle-switch.on::after {
+            left: 26px;
+            background: var(--white);
+        }
+
+        /* Win modal - zen simplicity */
+        .win-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.98);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .win-modal.show {
+            display: flex;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .win-content {
+            text-align: center;
+            padding: 80px 40px;
+            animation: scaleIn 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        @keyframes scaleIn {
+            0% {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .win-title {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 200;
+            margin-bottom: 24px;
+            color: var(--black);
+            letter-spacing: -0.02em;
+        }
+
+        .win-subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            margin-bottom: 48px;
+            color: var(--gray-dark);
+        }
+
+        .win-btn {
+            padding: 16px 48px;
+            border: 1px solid var(--black);
+            background: var(--black);
+            color: var(--white);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .win-btn:hover {
+            background: var(--red);
+            border-color: var(--red);
+        }
+
+        .win-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Stats - minimal display */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .stat-box {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-dark);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 300;
+            color: var(--black);
+        }
+
+        /* Focus mode overlay */
+        .focus-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 40;
+        }
+
+        .focus-overlay.active .player-label,
+        .focus-overlay.active .moves-dots {
+            opacity: 0;
+        }
+
+        /* Ink brush effect on active */
+        .ink-brush {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%),
+                rgba(196, 30, 58, 0.03) 0%,
+                transparent 60%);
+            pointer-events: none;
+            transition: opacity 0.8s ease;
+        }
+
+        .timer-zone.active .ink-brush {
+            opacity: 1;
+        }
+
+        /* Low time warning - subtle */
+        .timer-zone.low-time-30 {
+            background: linear-gradient(135deg, #FFFFFF 0%, #FFF8F8 100%);
+        }
+
+        .timer-zone.low-time-10 {
+            background: linear-gradient(135deg, #FFFFFF 0%, #FFF0F0 100%);
+        }
+    </style>
+</head>
+<body>
+    <!-- Divider -->
+    <div class="divider"></div>
+
+    <!-- Focus overlay -->
+    <div class="focus-overlay" id="focusOverlay"></div>
+
+    <!-- Player 2 Zone -->
+    <div class="timer-zone p2 inactive" data-player="2">
+        <div class="ink-brush" style="--x: 50%; --y: 50%;"></div>
+        <div class="time-container">
+            <div class="time-display" id="time2">05:00</div>
+        </div>
+        <div class="player-label" id="label2">Player 2</div>
+        <div class="moves-dots" id="movesDots2"></div>
+    </div>
+
+    <!-- Player 1 Zone -->
+    <div class="timer-zone p1 inactive" data-player="1">
+        <div class="ink-brush" style="--x: 50%; --y: 50%;"></div>
+        <div class="time-container">
+            <div class="time-display" id="time1">05:00</div>
+        </div>
+        <div class="player-label" id="label1">Player 1</div>
+        <div class="moves-dots" id="movesDots1"></div>
+    </div>
+
+    <!-- Control Panel -->
+    <div id="controlPanel">
+        <button class="zen-btn" onclick="openSettings()" title="Settings">⚙</button>
+        <button class="zen-btn" id="pauseBtn" onclick="togglePause()" title="Pause">⏸</button>
+        <button class="zen-btn" onclick="resetClock()" title="Reset">↻</button>
+        <button class="zen-btn" id="focusBtn" onclick="toggleFocus()" title="Focus Mode">○</button>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeSettings()">✕</button>
+
+            <h1 class="modal-title">Settings</h1>
+            <p class="modal-subtitle">Configure your practice</p>
+
+            <div class="section">
+                <h2 class="section-title">Players</h2>
+                <select id="player1Select" onchange="selectPlayer(1, this.value)">
+                    <option value="">Select Player 1</option>
+                </select>
+                <select id="player2Select" onchange="selectPlayer(2, this.value)">
+                    <option value="">Select Player 2</option>
+                </select>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Time Control</h2>
+                <div class="time-grid">
+                    <button class="zen-time-btn" onclick="setTime(60)">1 min</button>
+                    <button class="zen-time-btn" onclick="setTime(180)">3 min</button>
+                    <button class="zen-time-btn" onclick="setTime(300)">5 min</button>
+                    <button class="zen-time-btn" onclick="setTime(600)">10 min</button>
+                    <button class="zen-time-btn" onclick="setTime(900)">15 min</button>
+                    <button class="zen-time-btn" onclick="setTime(1800)">30 min</button>
+                </div>
+                <div class="input-group">
+                    <input type="number" id="customMinutes" placeholder="Custom minutes" min="1">
+                    <button class="submit-btn" onclick="setCustomTime()">Set</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Features</h2>
+                <div class="toggle-row">
+                    <span class="toggle-label">Ripple Effects</span>
+                    <div class="toggle-switch on" onclick="toggleRipples()" id="rippleToggle"></div>
+                </div>
+                <div class="toggle-row">
+                    <span class="toggle-label">Sound Effects</span>
+                    <div class="toggle-switch on" onclick="toggleSound()" id="soundToggle"></div>
+                </div>
+                <div class="toggle-row">
+                    <span class="toggle-label">Cherry Blossoms</span>
+                    <div class="toggle-switch on" onclick="togglePetals()" id="petalToggle"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Session</h2>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Games</div>
+                        <div class="stat-value" id="statGames">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Avg Time</div>
+                        <div class="stat-value" id="statAvgTime">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Win Modal -->
+    <div class="win-modal" id="winModal">
+        <div class="win-content">
+            <div class="win-title" id="winTitle">勝利</div>
+            <div class="win-subtitle" id="winSubtitle">Player 1 wins</div>
+            <button class="win-btn" onclick="closeWinModal()">New Game</button>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let player1Time = 300;
+        let player2Time = 300;
+        let player1Moves = 0;
+        let player2Moves = 0;
+        let activePlayer = 0;
+        let isPaused = true;
+        let interval = null;
+        let defaultTime = 300;
+        let audioContext = null;
+        let ripplesEnabled = true;
+        let soundEnabled = true;
+        let petalsEnabled = true;
+        let focusMode = false;
+        let sessionGames = 0;
+        let totalGameTime = 0;
+        let petalInterval = null;
+
+        // Touch
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        // Profiles
+        let profiles = [
+            { id: 1, name: 'Jason' },
+            { id: 2, name: 'Anthony' },
+            { id: 3, name: 'TaTa' },
+            { id: 4, name: 'Papi' },
+            { id: 5, name: 'Mama' }
+        ];
+        let selectedPlayer1 = null;
+        let selectedPlayer2 = null;
+
+        // Init
+        function init() {
+            initAudio();
+            setupGestures();
+            updatePlayerSelects();
+            updateDisplay();
+            updateStats();
+        }
+
+        // Audio
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type = 'click') {
+            if (!soundEnabled) return;
+            initAudio();
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+
+            if (type === 'click') {
+                // Bell-like sound
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, audioContext.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1000, audioContext.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.3);
+            } else if (type === 'win') {
+                // Temple bell
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioContext.currentTime);
+                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.5);
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 1.5);
+            }
+        }
+
+        // Gestures
+        function setupGestures() {
+            const zones = document.querySelectorAll('.timer-zone');
+            zones.forEach(zone => {
+                zone.addEventListener('touchstart', handleTouchStart, { passive: false });
+                zone.addEventListener('touchend', handleTouchEnd, { passive: false });
+                zone.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const rect = zone.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    createRipple(zone, x, y);
+                    switchPlayer(parseInt(zone.dataset.player));
+                });
+            });
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            const zone = e.target.closest('.timer-zone');
+            const rect = zone.getBoundingClientRect();
+            const x = touchStartX - rect.left;
+            const y = touchStartY - rect.top;
+            createRipple(zone, x, y);
+            switchPlayer(parseInt(zone.dataset.player));
+        }
+
+        function createRipple(zone, x, y) {
+            if (!ripplesEnabled) return;
+            const ripple = document.createElement('div');
+            ripple.className = 'ripple';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            ripple.style.marginLeft = '-200px';
+            ripple.style.marginTop = '-200px';
+            zone.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 1500);
+
+            // Update ink brush position
+            const inkBrush = zone.querySelector('.ink-brush');
+            if (inkBrush) {
+                const xPercent = (x / rect.width) * 100;
+                const yPercent = (y / rect.height) * 100;
+                inkBrush.style.setProperty('--x', xPercent + '%');
+                inkBrush.style.setProperty('--y', yPercent + '%');
+            }
+        }
+
+        // Timer
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            document.getElementById('time1').textContent = formatTime(player1Time);
+            document.getElementById('time2').textContent = formatTime(player2Time);
+            updateMoveDots(1, player1Moves);
+            updateMoveDots(2, player2Moves);
+
+            const zone1 = document.querySelector('.timer-zone.p1');
+            const zone2 = document.querySelector('.timer-zone.p2');
+
+            zone1.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+            zone2.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+
+            if (activePlayer === 1) {
+                zone1.classList.add('active');
+                zone2.classList.add('inactive');
+                if (player1Time <= 10) {
+                    zone1.classList.add('low-time-10');
+                    startPetals(zone1);
+                } else if (player1Time <= 30) {
+                    zone1.classList.add('low-time-30');
+                } else {
+                    stopPetals();
+                }
+            } else if (activePlayer === 2) {
+                zone2.classList.add('active');
+                zone1.classList.add('inactive');
+                if (player2Time <= 10) {
+                    zone2.classList.add('low-time-10');
+                    startPetals(zone2);
+                } else if (player2Time <= 30) {
+                    zone2.classList.add('low-time-30');
+                } else {
+                    stopPetals();
+                }
+            } else {
+                zone1.classList.add('inactive');
+                zone2.classList.add('inactive');
+                stopPetals();
+            }
+
+            if (player1Time <= 0) {
+                stopClock();
+                showWinner(2);
+            } else if (player2Time <= 0) {
+                stopClock();
+                showWinner(1);
+            }
+        }
+
+        function updateMoveDots(player, count) {
+            const container = document.getElementById(`movesDots${player}`);
+            container.innerHTML = '';
+            for (let i = 0; i < Math.min(count, 50); i++) {
+                const dot = document.createElement('div');
+                dot.className = 'move-dot';
+                dot.style.animationDelay = (i * 0.02) + 's';
+                container.appendChild(dot);
+            }
+        }
+
+        function startPetals(zone) {
+            if (!petalsEnabled || petalInterval) return;
+            petalInterval = setInterval(() => {
+                const petal = document.createElement('div');
+                petal.className = 'petal';
+                petal.style.left = Math.random() * 100 + '%';
+                petal.style.top = '0';
+                petal.style.animationDuration = (2 + Math.random() * 2) + 's';
+                zone.appendChild(petal);
+                setTimeout(() => petal.remove(), 4000);
+            }, 300);
+        }
+
+        function stopPetals() {
+            if (petalInterval) {
+                clearInterval(petalInterval);
+                petalInterval = null;
+            }
+        }
+
+        function tick() {
+            if (activePlayer === 1) player1Time--;
+            else if (activePlayer === 2) player2Time--;
+            updateDisplay();
+        }
+
+        function startClock() {
+            if (!interval && !isPaused) {
+                interval = setInterval(tick, 1000);
+            }
+        }
+
+        function stopClock() {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+            stopPetals();
+            isPaused = true;
+            activePlayer = 0;
+            updatePauseButton();
+        }
+
+        function switchPlayer(player) {
+            if (player1Time <= 0 || player2Time <= 0) return;
+            if (activePlayer === player || activePlayer === 0) {
+                playSound('click');
+
+                if (activePlayer === 0) {
+                    activePlayer = player;
+                    isPaused = false;
+                } else {
+                    if (player === 1) player1Moves++;
+                    else player2Moves++;
+                    activePlayer = player === 1 ? 2 : 1;
+                }
+
+                if (!isPaused) startClock();
+                updateDisplay();
+                updatePauseButton();
+            }
+        }
+
+        function togglePause() {
+            if (activePlayer === 0 && isPaused) {
+                activePlayer = 1;
+                isPaused = false;
+                startClock();
+            } else {
+                isPaused = !isPaused;
+                if (isPaused) {
+                    stopClock();
+                    interval = null;
+                } else {
+                    startClock();
+                }
+            }
+            updateDisplay();
+            updatePauseButton();
+        }
+
+        function updatePauseButton() {
+            document.getElementById('pauseBtn').textContent = isPaused ? '▶' : '⏸';
+        }
+
+        function resetClock() {
+            stopClock();
+            if (player1Time < defaultTime || player2Time < defaultTime) {
+                sessionGames++;
+                totalGameTime += (defaultTime * 2 - player1Time - player2Time);
+                updateStats();
+            }
+            player1Time = defaultTime;
+            player2Time = defaultTime;
+            player1Moves = 0;
+            player2Moves = 0;
+            activePlayer = 0;
+            isPaused = true;
+            updateDisplay();
+            updatePauseButton();
+        }
+
+        function setTime(seconds) {
+            defaultTime = seconds;
+            resetClock();
+            closeSettings();
+        }
+
+        function setCustomTime() {
+            const minutes = parseInt(document.getElementById('customMinutes').value);
+            if (minutes && minutes > 0) {
+                defaultTime = minutes * 60;
+                resetClock();
+                closeSettings();
+            }
+        }
+
+        // Settings
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('show');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('show');
+        }
+
+        // Players
+        function updatePlayerSelects() {
+            const opts = profiles.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            document.getElementById('player1Select').innerHTML = '<option value="">Select Player 1</option>' + opts;
+            document.getElementById('player2Select').innerHTML = '<option value="">Select Player 2</option>' + opts;
+        }
+
+        function selectPlayer(playerNum, profileId) {
+            const profile = profiles.find(p => p.id == profileId);
+            if (playerNum === 1) {
+                selectedPlayer1 = profile;
+                document.getElementById('label1').textContent = profile ? profile.name : 'Player 1';
+            } else {
+                selectedPlayer2 = profile;
+                document.getElementById('label2').textContent = profile ? profile.name : 'Player 2';
+            }
+        }
+
+        // Toggles
+        function toggleRipples() {
+            ripplesEnabled = !ripplesEnabled;
+            document.getElementById('rippleToggle').classList.toggle('on', ripplesEnabled);
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundToggle').classList.toggle('on', soundEnabled);
+        }
+
+        function togglePetals() {
+            petalsEnabled = !petalsEnabled;
+            document.getElementById('petalToggle').classList.toggle('on', petalsEnabled);
+            if (!petalsEnabled) stopPetals();
+        }
+
+        function toggleFocus() {
+            focusMode = !focusMode;
+            document.getElementById('focusOverlay').classList.toggle('active', focusMode);
+            document.getElementById('controlPanel').classList.toggle('focus-mode', focusMode);
+            document.getElementById('focusBtn').classList.toggle('active', focusMode);
+        }
+
+        // Stats
+        function updateStats() {
+            document.getElementById('statGames').textContent = sessionGames;
+            document.getElementById('statAvgTime').textContent = sessionGames > 0 ?
+                formatTime(Math.floor(totalGameTime / sessionGames)) : '—';
+        }
+
+        // Win
+        function showWinner(player) {
+            const name = player === 1 ?
+                (selectedPlayer1 ? selectedPlayer1.name : 'Player 1') :
+                (selectedPlayer2 ? selectedPlayer2.name : 'Player 2');
+            document.getElementById('winTitle').textContent = '勝利';
+            document.getElementById('winSubtitle').textContent = `${name} wins`;
+            document.getElementById('winModal').classList.add('show');
+            playSound('win');
+        }
+
+        function closeWinModal() {
+            document.getElementById('winModal').classList.remove('show');
+            resetClock();
+        }
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePause();
+            } else if (e.code === 'KeyR') {
+                resetClock();
+            } else if (e.code === 'KeyF') {
+                toggleFocus();
+            }
+        });
+
+        // Prevent zoom
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) e.preventDefault();
+            lastTouchEnd = now;
+        }, false);
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scene Switching Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0f172a;
+            color: white;
+            padding: 20px;
+        }
+        .test-section {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #764ba2;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .pass {
+            background: rgba(72, 187, 120, 0.3);
+            border: 2px solid #48bb78;
+        }
+        .fail {
+            background: rgba(245, 101, 101, 0.3);
+            border: 2px solid #f56565;
+        }
+        #console {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Scene Switching Test</h1>
+
+    <div class="test-section">
+        <h2>Expected Behavior</h2>
+        <ul>
+            <li><strong>Classic (2D)</strong>: Normal HTML timers visible, dark background</li>
+            <li><strong>Stadium (3D)</strong>: 2D timers fade out, 3D floating cylinders appear behind them</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>Quick Test</h2>
+        <button onclick="testSceneSwitching()">🔄 Run Full Test</button>
+        <button onclick="switchToStadium()">🏟️ Switch to Stadium</button>
+        <button onclick="switchToClassic()">📱 Switch to Classic</button>
+        <button onclick="checkCurrentState()">📊 Check Current State</button>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 Console Output</h2>
+        <div id="console"></div>
+    </div>
+
+    <script type="module">
+        import { get, dispatch, subscribe, ACTIONS } from './core/state.js'
+        import { emit, on } from './core/events.js'
+
+        const consoleEl = document.getElementById('console')
+        const resultsEl = document.getElementById('testResults')
+
+        function log(msg, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString()
+            const color = type === 'error' ? '#f56565' : type === 'success' ? '#48bb78' : '#0f0'
+            consoleEl.innerHTML += `<div style="color: ${color}">[${timestamp}] ${msg}</div>`
+            consoleEl.scrollTop = consoleEl.scrollHeight
+        }
+
+        // Subscribe to ambientMode changes
+        subscribe('ambientMode', (mode) => {
+            log(`✅ State changed: ambientMode = ${mode}`, 'success')
+        })
+
+        // Listen to events
+        on('ui:scene-changed', (data) => {
+            log(`📡 Event received: ui:scene-changed { sceneName: ${data.sceneName} }`)
+        })
+
+        on('renderer:scene-loading', (data) => {
+            log(`🔄 Renderer: Loading scene "${data.sceneName}"...`)
+        })
+
+        on('renderer:scene-loaded', (data) => {
+            log(`✅ Renderer: Scene "${data.sceneName}" loaded successfully`, 'success')
+        })
+
+        window.switchToStadium = function() {
+            log('🎬 ACTION: Switching to Stadium (3D)...')
+            dispatch(ACTIONS.UPDATE_SETTING, { key: 'ambientMode', value: 'stadium' })
+            emit('ui:scene-changed', { sceneName: 'stadium' })
+        }
+
+        window.switchToClassic = function() {
+            log('🎬 ACTION: Switching to Classic (2D)...')
+            dispatch(ACTIONS.UPDATE_SETTING, { key: 'ambientMode', value: 'classic' })
+            emit('ui:scene-changed', { sceneName: 'classic' })
+        }
+
+        window.checkCurrentState = function() {
+            const currentMode = get('ambientMode')
+            log(`📊 Current ambientMode: ${currentMode}`, currentMode === 'stadium' ? 'success' : 'info')
+            resultsEl.innerHTML = `
+                <div class="status ${currentMode === 'stadium' ? 'pass' : 'fail'}">
+                    <strong>Current Mode:</strong> ${currentMode || 'undefined'}<br>
+                    <strong>Expected:</strong> Should match what you see visually
+                </div>
+            `
+        }
+
+        window.testSceneSwitching = async function() {
+            log('🧪 Starting scene switching test...')
+            resultsEl.innerHTML = '<p>Testing...</p>'
+
+            // Test 1: Switch to stadium
+            log('TEST 1: Switch to Stadium')
+            switchToStadium()
+            await new Promise(r => setTimeout(r, 1000))
+
+            const mode1 = get('ambientMode')
+            const test1Pass = mode1 === 'stadium'
+            log(test1Pass ? '✅ TEST 1 PASSED' : '❌ TEST 1 FAILED', test1Pass ? 'success' : 'error')
+
+            // Test 2: Switch to classic
+            log('TEST 2: Switch to Classic')
+            switchToClassic()
+            await new Promise(r => setTimeout(r, 1000))
+
+            const mode2 = get('ambientMode')
+            const test2Pass = mode2 === 'classic'
+            log(test2Pass ? '✅ TEST 2 PASSED' : '❌ TEST 2 FAILED', test2Pass ? 'success' : 'error')
+
+            // Test 3: Switch back to stadium
+            log('TEST 3: Switch back to Stadium')
+            switchToStadium()
+            await new Promise(r => setTimeout(r, 1000))
+
+            const mode3 = get('ambientMode')
+            const test3Pass = mode3 === 'stadium'
+            log(test3Pass ? '✅ TEST 3 PASSED' : '❌ TEST 3 FAILED', test3Pass ? 'success' : 'error')
+
+            const allPass = test1Pass && test2Pass && test3Pass
+            resultsEl.innerHTML = `
+                <div class="status ${allPass ? 'pass' : 'fail'}">
+                    <h3>${allPass ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}</h3>
+                    <ul>
+                        <li>Switch to Stadium: ${test1Pass ? '✅ PASS' : '❌ FAIL'}</li>
+                        <li>Switch to Classic: ${test2Pass ? '✅ PASS' : '❌ FAIL'}</li>
+                        <li>Switch back to Stadium: ${test3Pass ? '✅ PASS' : '❌ FAIL'}</li>
+                    </ul>
+                </div>
+            `
+        }
+
+        // Initial state check
+        log('🚀 Test page loaded')
+        checkCurrentState()
+    </script>
+</body>
+</html>

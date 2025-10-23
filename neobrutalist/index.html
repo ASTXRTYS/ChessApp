@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CHESS CLOCK - Neo-Brutalist</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --black: #000000;
+            --white: #FFFFFF;
+            --yellow: #FFFF00;
+            --red: #FF0000;
+            --blue: #0000FF;
+            --green: #00FF00;
+            --magenta: #FF00FF;
+            --cyan: #00FFFF;
+        }
+
+        body {
+            font-family: 'Arial Black', 'Arial Bold', Gadget, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            background: var(--white);
+        }
+
+        /* Brutalist Timer Container */
+        .timer-zone {
+            height: 50vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            border: 8px solid var(--black);
+            transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            cursor: pointer;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .timer-zone::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.03) 2px,
+                rgba(0,0,0,0.03) 4px
+            );
+            pointer-events: none;
+        }
+
+        .timer-zone.active {
+            transform: scale(1.02);
+            box-shadow: inset 0 0 0 4px var(--black), inset 0 0 80px rgba(0,0,0,0.2);
+        }
+
+        .timer-zone.inactive {
+            opacity: 0.6;
+            filter: grayscale(0.3);
+        }
+
+        .timer-zone.p1 {
+            background: var(--yellow);
+            border-bottom: none;
+        }
+
+        .timer-zone.p2 {
+            background: var(--cyan);
+            border-top: none;
+            transform: rotate(180deg);
+        }
+
+        .timer-zone.p2.active {
+            transform: rotate(180deg) scale(1.02);
+        }
+
+        /* Aggressive time display */
+        .time-display {
+            font-size: clamp(80px, 25vw, 160px);
+            font-weight: 900;
+            line-height: 0.9;
+            letter-spacing: -0.05em;
+            text-shadow: 6px 6px 0 var(--black);
+            color: var(--white);
+            font-variant-numeric: tabular-nums;
+            animation: glitchText 0.3s infinite;
+            position: relative;
+            z-index: 10;
+        }
+
+        @keyframes glitchText {
+            0%, 90%, 100% {
+                transform: translate(0);
+            }
+            93% {
+                transform: translate(-2px, 2px);
+            }
+            96% {
+                transform: translate(2px, -2px);
+            }
+        }
+
+        .timer-zone.active .time-display {
+            animation: glitchTextActive 0.15s infinite, pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes glitchTextActive {
+            0%, 85%, 100% {
+                transform: translate(0);
+            }
+            88% {
+                transform: translate(-3px, 3px);
+            }
+            94% {
+                transform: translate(3px, -3px);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.03);
+            }
+        }
+
+        /* Player label */
+        .player-label {
+            font-size: clamp(20px, 5vw, 32px);
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            background: var(--black);
+            color: var(--white);
+            padding: 8px 24px;
+            border: 4px solid var(--black);
+            box-shadow: 6px 6px 0 rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 10;
+        }
+
+        .p2 .player-label {
+            margin-bottom: 0;
+            margin-top: 20px;
+        }
+
+        /* Moves counter */
+        .moves-counter {
+            font-size: 18px;
+            font-weight: 900;
+            background: var(--black);
+            color: var(--yellow);
+            padding: 6px 16px;
+            border: 3px solid var(--black);
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+        }
+
+        .p2 .moves-counter {
+            top: auto;
+            bottom: 20px;
+            right: auto;
+            left: 20px;
+        }
+
+        /* Control panel */
+        #controlPanel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+            padding: 12px;
+            background: var(--white);
+            border: 6px solid var(--black);
+            box-shadow: 8px 8px 0 rgba(0,0,0,0.4);
+        }
+
+        .btn {
+            width: 60px;
+            height: 60px;
+            border: 5px solid var(--black);
+            background: var(--white);
+            font-size: 28px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 4px 4px 0 var(--black);
+            position: relative;
+        }
+
+        .btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: none;
+        }
+
+        .btn.settings { background: var(--blue); color: var(--white); }
+        .btn.pause { background: var(--yellow); color: var(--black); }
+        .btn.reset { background: var(--red); color: var(--white); }
+
+        /* Settings Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: var(--white);
+            border: 8px solid var(--black);
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            margin-top: 40px;
+            margin-bottom: 40px;
+            box-shadow: 12px 12px 0 rgba(255,255,0,0.8);
+            position: relative;
+        }
+
+        .modal-title {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .modal-subtitle {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            opacity: 0.6;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--black);
+            background: var(--red);
+            color: var(--white);
+            font-size: 24px;
+            font-weight: 900;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 3px 3px 0 var(--black);
+        }
+
+        .close-btn:active {
+            transform: translate(3px, 3px);
+            box-shadow: none;
+        }
+
+        .section {
+            margin-bottom: 32px;
+            padding-bottom: 32px;
+            border-bottom: 4px solid var(--black);
+        }
+
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+        }
+
+        .time-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .time-btn {
+            padding: 16px;
+            border: 4px solid var(--black);
+            background: var(--white);
+            font-size: 18px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 4px 4px 0 var(--black);
+        }
+
+        .time-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: none;
+        }
+
+        /* Color themes */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .color-option {
+            padding: 24px;
+            border: 5px solid var(--black);
+            cursor: pointer;
+            font-weight: 900;
+            font-size: 16px;
+            text-align: center;
+            box-shadow: 5px 5px 0 var(--black);
+            transition: all 0.1s ease;
+        }
+
+        .color-option:active {
+            transform: translate(5px, 5px);
+            box-shadow: none;
+        }
+
+        .color-option.selected {
+            border-width: 8px;
+            box-shadow: inset 0 0 0 3px var(--white), 5px 5px 0 var(--black);
+        }
+
+        /* Gesture indicator */
+        .gesture-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--black);
+            color: var(--yellow);
+            padding: 16px 32px;
+            border: 4px solid var(--yellow);
+            font-size: 18px;
+            font-weight: 900;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 200;
+            box-shadow: 8px 8px 0 rgba(255,255,0,0.5);
+            animation: gestureHint 0.5s ease;
+        }
+
+        @keyframes gestureHint {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* Stats display */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .stat-box {
+            padding: 20px;
+            border: 4px solid var(--black);
+            background: var(--white);
+            box-shadow: 5px 5px 0 var(--black);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            font-weight: 900;
+            opacity: 0.6;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        /* Low time warning */
+        .timer-zone.low-time-30 {
+            animation: warningPulse 1s ease-in-out infinite;
+        }
+
+        .timer-zone.low-time-10 {
+            animation: dangerPulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes warningPulse {
+            0%, 100% {
+                filter: brightness(1);
+            }
+            50% {
+                filter: brightness(1.2);
+            }
+        }
+
+        @keyframes dangerPulse {
+            0%, 100% {
+                filter: brightness(1) hue-rotate(0deg);
+            }
+            50% {
+                filter: brightness(1.3) hue-rotate(-20deg);
+            }
+        }
+
+        /* Toggle switch */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border: 4px solid var(--black);
+            background: var(--white);
+            margin-bottom: 12px;
+            box-shadow: 4px 4px 0 var(--black);
+        }
+
+        .toggle-label {
+            font-weight: 900;
+            font-size: 16px;
+        }
+
+        .toggle-switch {
+            width: 60px;
+            height: 32px;
+            border: 4px solid var(--black);
+            background: var(--white);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--black);
+            left: 2px;
+            top: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-switch.on {
+            background: var(--green);
+        }
+
+        .toggle-switch.on::after {
+            left: 30px;
+        }
+
+        /* Input field */
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        input[type="number"] {
+            flex: 1;
+            padding: 16px;
+            border: 4px solid var(--black);
+            font-size: 18px;
+            font-weight: 900;
+            font-family: inherit;
+            box-shadow: inset 4px 4px 0 rgba(0,0,0,0.1);
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--blue);
+        }
+
+        .submit-btn {
+            padding: 16px 32px;
+            border: 4px solid var(--black);
+            background: var(--green);
+            color: var(--black);
+            font-size: 18px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 var(--black);
+            font-family: inherit;
+        }
+
+        .submit-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: none;
+        }
+
+        /* Profile selector */
+        select {
+            width: 100%;
+            padding: 16px;
+            border: 4px solid var(--black);
+            font-size: 16px;
+            font-weight: 900;
+            font-family: inherit;
+            background: var(--white);
+            margin-bottom: 12px;
+            box-shadow: 4px 4px 0 var(--black);
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--blue);
+        }
+
+        /* Win modal */
+        .win-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .win-modal.show {
+            display: flex;
+            animation: winFadeIn 0.3s ease;
+        }
+
+        @keyframes winFadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .win-content {
+            background: var(--yellow);
+            border: 12px solid var(--black);
+            padding: 60px 40px;
+            text-align: center;
+            box-shadow: 16px 16px 0 rgba(0,0,0,0.5);
+            animation: winBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes winBounce {
+            0% {
+                transform: scale(0.5) rotate(-5deg);
+            }
+            50% {
+                transform: scale(1.1) rotate(5deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        .win-title {
+            font-size: clamp(48px, 12vw, 96px);
+            font-weight: 900;
+            line-height: 0.9;
+            margin-bottom: 20px;
+            text-shadow: 6px 6px 0 var(--black);
+            color: var(--white);
+        }
+
+        .win-subtitle {
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 32px;
+        }
+
+        .win-btn {
+            padding: 20px 40px;
+            border: 6px solid var(--black);
+            background: var(--black);
+            color: var(--white);
+            font-size: 24px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 6px 6px 0 rgba(0,0,0,0.5);
+            font-family: inherit;
+        }
+
+        .win-btn:active {
+            transform: translate(6px, 6px);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Player 2 Zone (Top) -->
+    <div class="timer-zone p2 inactive" data-player="2">
+        <div class="moves-counter" id="moves2">MOVES: 0</div>
+        <div class="player-label" id="label2">PLAYER 2</div>
+        <div class="time-display" id="time2">05:00</div>
+    </div>
+
+    <!-- Player 1 Zone (Bottom) -->
+    <div class="timer-zone p1 inactive" data-player="1">
+        <div class="time-display" id="time1">05:00</div>
+        <div class="player-label" id="label1">PLAYER 1</div>
+        <div class="moves-counter" id="moves1">MOVES: 0</div>
+    </div>
+
+    <!-- Control Panel -->
+    <div id="controlPanel">
+        <button class="btn settings" onclick="openSettings()">⚙</button>
+        <button class="btn pause" id="pauseBtn" onclick="togglePause()">⏸</button>
+        <button class="btn reset" onclick="resetClock()">↻</button>
+    </div>
+
+    <!-- Gesture Hint -->
+    <div class="gesture-hint" id="gestureHint"></div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeSettings()">✕</button>
+
+            <h1 class="modal-title">SETTINGS</h1>
+            <p class="modal-subtitle">Configure your game</p>
+
+            <!-- Players Section -->
+            <div class="section">
+                <h2 class="section-title">PLAYERS</h2>
+                <select id="player1Select" onchange="selectPlayer(1, this.value)">
+                    <option value="">SELECT PLAYER 1</option>
+                </select>
+                <select id="player2Select" onchange="selectPlayer(2, this.value)">
+                    <option value="">SELECT PLAYER 2</option>
+                </select>
+            </div>
+
+            <!-- Time Control -->
+            <div class="section">
+                <h2 class="section-title">TIME CONTROL</h2>
+                <div class="time-grid">
+                    <button class="time-btn" onclick="setTime(60)">1 MIN</button>
+                    <button class="time-btn" onclick="setTime(180)">3 MIN</button>
+                    <button class="time-btn" onclick="setTime(300)">5 MIN</button>
+                    <button class="time-btn" onclick="setTime(600)">10 MIN</button>
+                    <button class="time-btn" onclick="setTime(900)">15 MIN</button>
+                    <button class="time-btn" onclick="setTime(1800)">30 MIN</button>
+                </div>
+                <div class="input-group">
+                    <input type="number" id="customMinutes" placeholder="CUSTOM MINUTES" min="1">
+                    <button class="submit-btn" onclick="setCustomTime()">SET</button>
+                </div>
+            </div>
+
+            <!-- Color Themes -->
+            <div class="section">
+                <h2 class="section-title">PLAYER 1 COLOR</h2>
+                <div class="color-grid" id="p1ColorGrid"></div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">PLAYER 2 COLOR</h2>
+                <div class="color-grid" id="p2ColorGrid"></div>
+            </div>
+
+            <!-- Features -->
+            <div class="section">
+                <h2 class="section-title">FEATURES</h2>
+                <div class="toggle-row">
+                    <span class="toggle-label">GESTURE CONTROLS</span>
+                    <div class="toggle-switch on" onclick="toggleGestures()" id="gestureToggle"></div>
+                </div>
+                <div class="toggle-row">
+                    <span class="toggle-label">SOUND EFFECTS</span>
+                    <div class="toggle-switch on" onclick="toggleSound()" id="soundToggle"></div>
+                </div>
+                <div class="toggle-row">
+                    <span class="toggle-label">HAPTIC FEEDBACK</span>
+                    <div class="toggle-switch on" onclick="toggleHaptic()" id="hapticToggle"></div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="section">
+                <h2 class="section-title">SESSION STATS</h2>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">GAMES PLAYED</div>
+                        <div class="stat-value" id="statGames">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">AVG GAME TIME</div>
+                        <div class="stat-value" id="statAvgTime">--:--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Win Modal -->
+    <div class="win-modal" id="winModal">
+        <div class="win-content">
+            <div class="win-title" id="winTitle">WINNER!</div>
+            <div class="win-subtitle" id="winSubtitle">Player 1 wins</div>
+            <button class="win-btn" onclick="closeWinModal()">NEW GAME</button>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let player1Time = 300;
+        let player2Time = 300;
+        let player1Moves = 0;
+        let player2Moves = 0;
+        let activePlayer = 0;
+        let isPaused = true;
+        let interval = null;
+        let defaultTime = 300;
+        let audioContext = null;
+        let gesturesEnabled = true;
+        let soundEnabled = true;
+        let hapticEnabled = true;
+
+        // Stats
+        let sessionGames = 0;
+        let totalGameTime = 0;
+
+        // Touch gesture tracking
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        // Player profiles
+        let profiles = [
+            { id: 1, name: 'Jason' },
+            { id: 2, name: 'Anthony' },
+            { id: 3, name: 'TaTa' },
+            { id: 4, name: 'Papi' },
+            { id: 5, name: 'Mama' }
+        ];
+        let selectedPlayer1 = null;
+        let selectedPlayer2 = null;
+
+        // Color themes
+        const colorThemes = [
+            { name: 'YELLOW', color: '#FFFF00', text: '#000000' },
+            { name: 'RED', color: '#FF0000', text: '#FFFFFF' },
+            { name: 'BLUE', color: '#0000FF', text: '#FFFFFF' },
+            { name: 'GREEN', color: '#00FF00', text: '#000000' },
+            { name: 'MAGENTA', color: '#FF00FF', text: '#FFFFFF' },
+            { name: 'CYAN', color: '#00FFFF', text: '#000000' }
+        ];
+
+        let p1Color = colorThemes[0];
+        let p2Color = colorThemes[5];
+
+        // Initialize
+        function init() {
+            initAudio();
+            setupGestures();
+            renderColorOptions();
+            updatePlayerSelects();
+            applyColors();
+            updateDisplay();
+            updateStats();
+        }
+
+        // Audio
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type = 'click') {
+            if (!soundEnabled) return;
+
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            if (type === 'click') {
+                oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(500, audioContext.currentTime + 0.05);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'win') {
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            }
+        }
+
+        // Haptic feedback
+        function vibrate(pattern = 50) {
+            if (hapticEnabled && navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // Gesture controls
+        function setupGestures() {
+            const zones = document.querySelectorAll('.timer-zone');
+
+            zones.forEach(zone => {
+                // Touch events
+                zone.addEventListener('touchstart', handleTouchStart, { passive: false });
+                zone.addEventListener('touchmove', handleTouchMove, { passive: false });
+                zone.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+                // Click event
+                zone.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const player = parseInt(zone.dataset.player);
+                    switchPlayer(player);
+                });
+            });
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+
+            if (!gesturesEnabled) {
+                const player = parseInt(e.target.closest('.timer-zone').dataset.player);
+                switchPlayer(player);
+                return;
+            }
+
+            const touchEndY = e.changedTouches[0].clientY;
+            const touchDuration = Date.now() - touchStartTime;
+            const deltaY = touchEndY - touchStartY;
+
+            // Swipe detection (minimum 50px, maximum 500ms)
+            if (Math.abs(deltaY) > 50 && touchDuration < 500) {
+                const direction = deltaY > 0 ? 'down' : 'up';
+                handleSwipe(direction, e.target.closest('.timer-zone'));
+            } else {
+                // Tap
+                const player = parseInt(e.target.closest('.timer-zone').dataset.player);
+                switchPlayer(player);
+            }
+        }
+
+        function handleSwipe(direction, zone) {
+            const player = parseInt(zone.dataset.player);
+
+            // Swipe away from center = switch turn
+            if ((player === 1 && direction === 'down') || (player === 2 && direction === 'up')) {
+                showGestureHint('SWIPE TO PASS');
+                switchPlayer(player);
+            }
+        }
+
+        function showGestureHint(message) {
+            const hint = document.getElementById('gestureHint');
+            hint.textContent = message;
+            hint.style.opacity = '1';
+            setTimeout(() => {
+                hint.style.opacity = '0';
+            }, 500);
+        }
+
+        // Timer functions
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            document.getElementById('time1').textContent = formatTime(player1Time);
+            document.getElementById('time2').textContent = formatTime(player2Time);
+            document.getElementById('moves1').textContent = `MOVES: ${player1Moves}`;
+            document.getElementById('moves2').textContent = `MOVES: ${player2Moves}`;
+
+            const zone1 = document.querySelector('.timer-zone.p1');
+            const zone2 = document.querySelector('.timer-zone.p2');
+
+            // Update active states
+            zone1.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+            zone2.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+
+            if (activePlayer === 1) {
+                zone1.classList.add('active');
+                zone2.classList.add('inactive');
+                if (player1Time <= 10) zone1.classList.add('low-time-10');
+                else if (player1Time <= 30) zone1.classList.add('low-time-30');
+            } else if (activePlayer === 2) {
+                zone2.classList.add('active');
+                zone1.classList.add('inactive');
+                if (player2Time <= 10) zone2.classList.add('low-time-10');
+                else if (player2Time <= 30) zone2.classList.add('low-time-30');
+            } else {
+                zone1.classList.add('inactive');
+                zone2.classList.add('inactive');
+            }
+
+            // Check win condition
+            if (player1Time <= 0) {
+                stopClock();
+                showWinner(2);
+            } else if (player2Time <= 0) {
+                stopClock();
+                showWinner(1);
+            }
+        }
+
+        function tick() {
+            if (activePlayer === 1) {
+                player1Time--;
+            } else if (activePlayer === 2) {
+                player2Time--;
+            }
+            updateDisplay();
+        }
+
+        function startClock() {
+            if (!interval && !isPaused) {
+                interval = setInterval(tick, 1000);
+            }
+        }
+
+        function stopClock() {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+            isPaused = true;
+            activePlayer = 0;
+            updatePauseButton();
+        }
+
+        function switchPlayer(player) {
+            if (player1Time <= 0 || player2Time <= 0) return;
+
+            if (activePlayer === player || activePlayer === 0) {
+                playSound('click');
+                vibrate(50);
+
+                if (activePlayer === 0) {
+                    activePlayer = player;
+                    isPaused = false;
+                } else {
+                    if (player === 1) player1Moves++;
+                    else player2Moves++;
+                    activePlayer = player === 1 ? 2 : 1;
+                }
+
+                if (!isPaused) {
+                    startClock();
+                }
+                updateDisplay();
+                updatePauseButton();
+            }
+        }
+
+        function togglePause() {
+            if (activePlayer === 0 && isPaused) {
+                activePlayer = 1;
+                isPaused = false;
+                startClock();
+            } else {
+                isPaused = !isPaused;
+                if (isPaused) {
+                    stopClock();
+                    interval = null;
+                } else {
+                    startClock();
+                }
+            }
+            updateDisplay();
+            updatePauseButton();
+        }
+
+        function updatePauseButton() {
+            const btn = document.getElementById('pauseBtn');
+            btn.textContent = isPaused ? '▶' : '⏸';
+        }
+
+        function resetClock() {
+            stopClock();
+
+            // Track game completion
+            if (player1Time < defaultTime || player2Time < defaultTime) {
+                const gameTime = defaultTime * 2 - player1Time - player2Time;
+                sessionGames++;
+                totalGameTime += gameTime;
+                updateStats();
+            }
+
+            player1Time = defaultTime;
+            player2Time = defaultTime;
+            player1Moves = 0;
+            player2Moves = 0;
+            activePlayer = 0;
+            isPaused = true;
+            updateDisplay();
+            updatePauseButton();
+        }
+
+        function setTime(seconds) {
+            defaultTime = seconds;
+            resetClock();
+            closeSettings();
+        }
+
+        function setCustomTime() {
+            const minutes = parseInt(document.getElementById('customMinutes').value);
+            if (minutes && minutes > 0) {
+                defaultTime = minutes * 60;
+                resetClock();
+                closeSettings();
+            }
+        }
+
+        // Settings
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('show');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('show');
+        }
+
+        // Color themes
+        function renderColorOptions() {
+            const p1Grid = document.getElementById('p1ColorGrid');
+            const p2Grid = document.getElementById('p2ColorGrid');
+
+            colorThemes.forEach((theme, index) => {
+                const option1 = createColorOption(theme, 1);
+                const option2 = createColorOption(theme, 2);
+                p1Grid.appendChild(option1);
+                p2Grid.appendChild(option2);
+            });
+        }
+
+        function createColorOption(theme, player) {
+            const div = document.createElement('div');
+            div.className = 'color-option';
+            div.style.backgroundColor = theme.color;
+            div.style.color = theme.text;
+            div.textContent = theme.name;
+            div.onclick = () => setPlayerColor(player, theme);
+
+            if ((player === 1 && theme === p1Color) || (player === 2 && theme === p2Color)) {
+                div.classList.add('selected');
+            }
+
+            return div;
+        }
+
+        function setPlayerColor(player, theme) {
+            if (player === 1) {
+                p1Color = theme;
+            } else {
+                p2Color = theme;
+            }
+            applyColors();
+
+            // Update selection visual
+            const grid = document.getElementById(player === 1 ? 'p1ColorGrid' : 'p2ColorGrid');
+            grid.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+            event.target.classList.add('selected');
+        }
+
+        function applyColors() {
+            document.querySelector('.timer-zone.p1').style.backgroundColor = p1Color.color;
+            document.querySelector('.timer-zone.p2').style.backgroundColor = p2Color.color;
+        }
+
+        // Players
+        function updatePlayerSelects() {
+            const select1 = document.getElementById('player1Select');
+            const select2 = document.getElementById('player2Select');
+
+            select1.innerHTML = '<option value="">SELECT PLAYER 1</option>' +
+                profiles.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            select2.innerHTML = '<option value="">SELECT PLAYER 2</option>' +
+                profiles.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        }
+
+        function selectPlayer(playerNum, profileId) {
+            const profile = profiles.find(p => p.id == profileId);
+
+            if (playerNum === 1) {
+                selectedPlayer1 = profile;
+                document.getElementById('label1').textContent = profile ? profile.name.toUpperCase() : 'PLAYER 1';
+            } else {
+                selectedPlayer2 = profile;
+                document.getElementById('label2').textContent = profile ? profile.name.toUpperCase() : 'PLAYER 2';
+            }
+        }
+
+        // Toggles
+        function toggleGestures() {
+            gesturesEnabled = !gesturesEnabled;
+            document.getElementById('gestureToggle').classList.toggle('on', gesturesEnabled);
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundToggle').classList.toggle('on', soundEnabled);
+        }
+
+        function toggleHaptic() {
+            hapticEnabled = !hapticEnabled;
+            document.getElementById('hapticToggle').classList.toggle('on', hapticEnabled);
+        }
+
+        // Stats
+        function updateStats() {
+            document.getElementById('statGames').textContent = sessionGames;
+            if (sessionGames > 0) {
+                const avgTime = Math.floor(totalGameTime / sessionGames);
+                document.getElementById('statAvgTime').textContent = formatTime(avgTime);
+            } else {
+                document.getElementById('statAvgTime').textContent = '--:--';
+            }
+        }
+
+        // Win modal
+        function showWinner(player) {
+            const winnerName = player === 1 ?
+                (selectedPlayer1 ? selectedPlayer1.name : 'PLAYER 1') :
+                (selectedPlayer2 ? selectedPlayer2.name : 'PLAYER 2');
+
+            document.getElementById('winTitle').textContent = 'WINNER!';
+            document.getElementById('winSubtitle').textContent = `${winnerName} WINS`;
+            document.getElementById('winModal').classList.add('show');
+
+            playSound('win');
+            vibrate([200, 100, 200]);
+        }
+
+        function closeWinModal() {
+            document.getElementById('winModal').classList.remove('show');
+            resetClock();
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePause();
+            } else if (e.code === 'KeyR') {
+                resetClock();
+            }
+        });
+
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // Initialize app
+        init();
+    </script>
+</body>
+</html>

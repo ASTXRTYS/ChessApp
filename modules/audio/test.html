@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Module Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1a202c;
+      color: #fff;
+    }
+    h1 {
+      color: #667eea;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .test-section {
+      margin: 30px 0;
+      padding: 20px;
+      background: #2d3748;
+      border-radius: 8px;
+    }
+    button {
+      padding: 12px 24px;
+      margin: 10px 10px 10px 0;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #667eea;
+      color: white;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #764ba2;
+      transform: scale(1.05);
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    .danger {
+      background: #dc2626;
+    }
+    .danger:hover {
+      background: #b91c1c;
+    }
+    .success {
+      background: #48bb78;
+    }
+    .success:hover {
+      background: #38a169;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      background: #111827;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .log {
+      margin-top: 10px;
+      padding: 10px;
+      background: #0d1117;
+      border-left: 3px solid #667eea;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Audio Module Test Suite</h1>
+
+  <div class="test-section">
+    <h2>1. Initialization</h2>
+    <button id="init">Initialize Audio Engine</button>
+    <div class="status" id="init-status">Status: Not initialized</div>
+  </div>
+
+  <div class="test-section">
+    <h2>2. Basic Sounds</h2>
+    <button id="click">Play Click Sound</button>
+    <button id="tick">Play Tick Sound</button>
+    <button id="tock">Play Tock Sound</button>
+  </div>
+
+  <div class="test-section">
+    <h2>3. Tick-Tock Loop</h2>
+    <button id="start-ticking" class="success">Start Tick-Tock</button>
+    <button id="stop-ticking" class="danger">Stop Tick-Tock</button>
+    <p style="color: #a0aec0; margin-top: 10px;">
+      Simulates different tempos: 60s (1000ms) → 30s (500ms) → 10s (250ms)
+    </p>
+    <button id="tempo-60">60s Tempo (1000ms)</button>
+    <button id="tempo-30">30s Tempo (500ms)</button>
+    <button id="tempo-10">10s Tempo (250ms)</button>
+  </div>
+
+  <div class="test-section">
+    <h2>4. Alert Sounds</h2>
+    <button id="warning">Play Warning</button>
+    <button id="heartbeat">Play Heartbeat</button>
+    <button id="victory" class="success">Play Victory Fanfare</button>
+  </div>
+
+  <div class="test-section">
+    <h2>5. Volume Control</h2>
+    <button id="mute">Mute</button>
+    <button id="unmute">Unmute</button>
+    <button id="vol-low">Volume: Low (0.1)</button>
+    <button id="vol-med">Volume: Medium (0.3)</button>
+    <button id="vol-high">Volume: High (0.6)</button>
+  </div>
+
+  <div class="test-section">
+    <h2>6. Event Test</h2>
+    <p style="color: #a0aec0;">Test event-driven architecture</p>
+    <button id="emit-switch">Emit: game:player-switched</button>
+    <button id="emit-lowtime">Emit: game:low-time</button>
+    <button id="emit-critical">Emit: game:critical-time</button>
+    <button id="emit-victory">Emit: game:victory</button>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <script type="module">
+    // Import core modules (simulated for test)
+    import { init, mute, unmute, setMasterVolume, isMuted, isInitialized } from './engine.js'
+    import {
+      playClick,
+      playTick,
+      startTickTock,
+      stopTickTock,
+      updateTickTockTempo,
+      playWarning,
+      playHeartbeat,
+      stopHeartbeat,
+      playVictory
+    } from './sounds.js'
+
+    // Import events for testing
+    import { emit, on } from '../../core/events.js'
+
+    // Logging
+    const log = document.getElementById('log')
+    const addLog = (message) => {
+      const timestamp = new Date().toLocaleTimeString()
+      log.innerHTML += `<div>[${timestamp}] ${message}</div>`
+      log.scrollTop = log.scrollHeight
+    }
+
+    // Listen to audio events
+    on('audio:initialized', () => {
+      addLog('✅ Audio initialized')
+      document.getElementById('init-status').textContent = 'Status: ✅ Initialized and ready'
+      document.getElementById('init-status').style.background = '#065f46'
+    })
+
+    on('audio:error', (data) => {
+      addLog(`❌ Audio error: ${data.message}`)
+    })
+
+    // Initialization
+    document.getElementById('init').onclick = () => {
+      addLog('Initializing audio engine...')
+      init()
+      if (isInitialized()) {
+        addLog('Audio engine ready!')
+      }
+    }
+
+    // Basic sounds
+    document.getElementById('click').onclick = () => {
+      addLog('Playing click sound')
+      playClick()
+    }
+
+    document.getElementById('tick').onclick = () => {
+      addLog('Playing tick (high pitch)')
+      playTick(false)
+    }
+
+    document.getElementById('tock').onclick = () => {
+      addLog('Playing tock (low pitch)')
+      playTick(true)
+    }
+
+    // Tick-tock loop
+    document.getElementById('start-ticking').onclick = () => {
+      addLog('Starting tick-tock loop')
+      startTickTock()
+    }
+
+    document.getElementById('stop-ticking').onclick = () => {
+      addLog('Stopping tick-tock loop')
+      stopTickTock()
+      stopHeartbeat()
+    }
+
+    document.getElementById('tempo-60').onclick = () => {
+      addLog('Setting tempo to 60s (1000ms)')
+      updateTickTockTempo(60)
+    }
+
+    document.getElementById('tempo-30').onclick = () => {
+      addLog('Setting tempo to 30s (500ms)')
+      updateTickTockTempo(30)
+    }
+
+    document.getElementById('tempo-10').onclick = () => {
+      addLog('Setting tempo to 10s (250ms)')
+      updateTickTockTempo(10)
+    }
+
+    // Alert sounds
+    document.getElementById('warning').onclick = () => {
+      addLog('Playing warning sound')
+      playWarning()
+    }
+
+    document.getElementById('heartbeat').onclick = () => {
+      addLog('Playing heartbeat (loops every 1s)')
+      playHeartbeat()
+    }
+
+    document.getElementById('victory').onclick = () => {
+      addLog('Playing victory fanfare')
+      playVictory()
+    }
+
+    // Volume control
+    document.getElementById('mute').onclick = () => {
+      addLog('Muting audio')
+      mute()
+      addLog(`Muted: ${isMuted()}`)
+    }
+
+    document.getElementById('unmute').onclick = () => {
+      addLog('Unmuting audio')
+      unmute()
+      addLog(`Muted: ${isMuted()}`)
+    }
+
+    document.getElementById('vol-low').onclick = () => {
+      addLog('Setting volume to LOW (0.1)')
+      setMasterVolume(0.1)
+    }
+
+    document.getElementById('vol-med').onclick = () => {
+      addLog('Setting volume to MEDIUM (0.3)')
+      setMasterVolume(0.3)
+    }
+
+    document.getElementById('vol-high').onclick = () => {
+      addLog('Setting volume to HIGH (0.6)')
+      setMasterVolume(0.6)
+    }
+
+    // Event tests
+    document.getElementById('emit-switch').onclick = () => {
+      addLog('Emitting: game:player-switched')
+      emit('game:player-switched', { player: 2 })
+    }
+
+    document.getElementById('emit-lowtime').onclick = () => {
+      addLog('Emitting: game:low-time')
+      emit('game:low-time', { player: 1, timeRemaining: 60 })
+    }
+
+    document.getElementById('emit-critical').onclick = () => {
+      addLog('Emitting: game:critical-time')
+      emit('game:critical-time', { player: 1, timeRemaining: 10 })
+    }
+
+    document.getElementById('emit-victory').onclick = () => {
+      addLog('Emitting: game:victory')
+      emit('game:victory', { winner: 1, loser: 2 })
+    }
+
+    // Auto-initialize on load
+    window.addEventListener('load', () => {
+      addLog('Page loaded. Click "Initialize Audio Engine" to begin.')
+    })
+  </script>
+</body>
+</html>

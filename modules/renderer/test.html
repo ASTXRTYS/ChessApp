@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renderer Module Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: white;
+        }
+        #renderCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        button {
+            display: block;
+            margin: 10px 0;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+
+    <div class="controls">
+        <h3>Renderer Test</h3>
+        <button id="loadStadium">Load Stadium Scene</button>
+        <button id="loadClassic">Load Classic Scene</button>
+        <button id="togglePlayer">Toggle Active Player</button>
+        <button id="updateTimer">Update Timer</button>
+        <button id="shakeCamera">Shake Camera</button>
+    </div>
+
+    <div class="status">
+        <div id="status">Initializing...</div>
+    </div>
+
+    <script type="module">
+        // Mock core modules for isolated testing
+        const mockEvents = (() => {
+            const listeners = {}
+            return {
+                emit(name, data) {
+                    console.log('[Event]', name, data)
+                    if (listeners[name]) {
+                        listeners[name].forEach(cb => cb(data))
+                    }
+                },
+                on(name, callback) {
+                    if (!listeners[name]) listeners[name] = []
+                    listeners[name].push(callback)
+                }
+            }
+        })()
+
+        const mockState = (() => {
+            const state = {
+                player1Time: 300,
+                player2Time: 300,
+                activePlayer: 0,
+                isPaused: true,
+                ambientMode: 'stadium'
+            }
+            const subscribers = {}
+
+            return {
+                get(key) { return state[key] },
+                getState() { return { ...state } },
+                subscribe(key, callback) {
+                    if (!subscribers[key]) subscribers[key] = []
+                    subscribers[key].push(callback)
+                },
+                setState(key, value) {
+                    state[key] = value
+                    if (subscribers[key]) {
+                        subscribers[key].forEach(cb => cb(value))
+                    }
+                }
+            }
+        })()
+
+        // Inject mocks into global scope for module imports
+        window.__mockCore = { events: mockEvents, state: mockState }
+
+        // Import renderer (with mocked core)
+        import { init, loadScene, updateTimerDisplay, setActivePlayer } from './scene-manager.js'
+        import { shake } from './camera.js'
+
+        // UI elements
+        const canvas = document.getElementById('renderCanvas')
+        const status = document.getElementById('status')
+
+        // Test state
+        let currentPlayer = 0
+        let timer1 = 300
+        let timer2 = 300
+
+        // Initialize renderer
+        async function initialize() {
+            try {
+                status.textContent = 'Initializing renderer...'
+                await init(canvas)
+                status.textContent = '✅ Renderer initialized! Scene: Stadium'
+            } catch (error) {
+                status.textContent = '❌ Error: ' + error.message
+                console.error(error)
+            }
+        }
+
+        // Test controls
+        document.getElementById('loadStadium').addEventListener('click', async () => {
+            status.textContent = 'Loading stadium scene...'
+            await loadScene('stadium')
+            status.textContent = '✅ Stadium scene loaded'
+        })
+
+        document.getElementById('loadClassic').addEventListener('click', async () => {
+            status.textContent = 'Loading classic scene...'
+            await loadScene('classic')
+            status.textContent = '✅ Classic scene loaded'
+        })
+
+        document.getElementById('togglePlayer').addEventListener('click', () => {
+            currentPlayer = currentPlayer === 0 ? 1 : (currentPlayer === 1 ? 2 : 0)
+            setActivePlayer(currentPlayer)
+            mockState.setState('activePlayer', currentPlayer)
+            status.textContent = `Active player: ${currentPlayer || 'None'}`
+        })
+
+        document.getElementById('updateTimer').addEventListener('click', () => {
+            timer1 -= 10
+            timer2 -= 5
+            const time1 = `${Math.floor(timer1/60).toString().padStart(2,'0')}:${(timer1%60).toString().padStart(2,'0')}`
+            const time2 = `${Math.floor(timer2/60).toString().padStart(2,'0')}:${(timer2%60).toString().padStart(2,'0')}`
+
+            updateTimerDisplay(1, time1)
+            updateTimerDisplay(2, time2)
+
+            status.textContent = `Timers updated: ${time1} / ${time2}`
+        })
+
+        document.getElementById('shakeCamera').addEventListener('click', () => {
+            shake(0.05, 500)
+            status.textContent = 'Camera shake triggered!'
+        })
+
+        // Start
+        initialize()
+    </script>
+</body>
+</html>

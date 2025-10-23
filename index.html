@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Clock Design Gallery</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        h1 {
+            font-size: clamp(36px, 8vw, 72px);
+            font-weight: 800;
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: clamp(16px, 3vw, 24px);
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            margin-bottom: 60px;
+        }
+
+        .design-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            display: block;
+        }
+
+        .design-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .card-preview {
+            height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-preview::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .design-card:hover .card-preview::before {
+            opacity: 1;
+        }
+
+        .preview-neobrutalist {
+            background: #FFFF00;
+            color: #000000;
+            font-family: Arial Black, sans-serif;
+            font-weight: 900;
+        }
+
+        .preview-glassmorphic {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .preview-zen {
+            background: #FFFFFF;
+            color: #C41E3A;
+            font-family: system-ui, -apple-system;
+            font-weight: 200;
+        }
+
+        .preview-cyberpunk {
+            background: #0a0e27;
+            color: #FF006E;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        .card-info {
+            padding: 24px;
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .card-description {
+            font-size: 14px;
+            opacity: 0.8;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .feature-tag {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 32px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 40px;
+        }
+
+        .instructions h2 {
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+
+        .instructions p {
+            font-size: 16px;
+            line-height: 1.8;
+            opacity: 0.9;
+            margin-bottom: 12px;
+        }
+
+        .instructions code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .server-commands {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .server-commands .command {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            .gallery {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                margin-bottom: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Chess Clock Design Gallery</h1>
+            <p class="subtitle">Four unique mobile-first designs with advanced interactions</p>
+        </header>
+
+        <div class="instructions">
+            <h2>🚀 How to Launch</h2>
+            <p>Each design runs on its own local server. Use the commands below to start them:</p>
+
+            <div class="server-commands">
+                <div class="command"># Neo-Brutalist (Port 8001)</div>
+                <div class="command">cd /Users/Jason/Desktop/chess-clock/v2/neobrutalist && python3 -m http.server 8001</div>
+
+                <div class="command" style="margin-top: 16px;"># Glassmorphic (Port 8002)</div>
+                <div class="command">cd /Users/Jason/Desktop/chess-clock/v2/glassmorphic && python3 -m http.server 8002</div>
+
+                <div class="command" style="margin-top: 16px;"># Japanese Zen (Port 8003)</div>
+                <div class="command">cd /Users/Jason/Desktop/chess-clock/v2/japanese-zen && python3 -m http.server 8003</div>
+
+                <div class="command" style="margin-top: 16px;"># Cyberpunk (Port 8004)</div>
+                <div class="command">cd /Users/Jason/Desktop/chess-clock/v2/cyberpunk && python3 -m http.server 8004</div>
+            </div>
+
+            <p style="margin-top: 20px;">Or click the cards below to open them directly (servers must be running):</p>
+        </div>
+
+        <div class="gallery">
+            <!-- Neo-Brutalist -->
+            <a href="http://localhost:8001" class="design-card" target="_blank">
+                <div class="card-preview preview-neobrutalist">
+                    BOLD
+                </div>
+                <div class="card-info">
+                    <div class="card-title">Neo-Brutalist</div>
+                    <div class="card-description">
+                        Aggressive design with thick borders, maximum contrast, and bold typography. Inspired by brutalist architecture and Swiss design.
+                    </div>
+                    <div class="features">
+                        <span class="feature-tag">Gesture Controls</span>
+                        <span class="feature-tag">Haptic Feedback</span>
+                        <span class="feature-tag">Session Stats</span>
+                        <span class="feature-tag">Sound FX</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Glassmorphic -->
+            <a href="http://localhost:8002" class="design-card" target="_blank">
+                <div class="card-preview preview-glassmorphic">
+                    ✨
+                </div>
+                <div class="card-info">
+                    <div class="card-title">Glassmorphic</div>
+                    <div class="card-description">
+                        Soft, frosted glass surfaces with neumorphic elements. Pastel gradients and gentle animations create a calming experience.
+                    </div>
+                    <div class="features">
+                        <span class="feature-tag">Glass Blur</span>
+                        <span class="feature-tag">Theme Selector</span>
+                        <span class="feature-tag">Smooth Transitions</span>
+                        <span class="feature-tag">Gestures</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Japanese Zen -->
+            <a href="http://localhost:8003" class="design-card" target="_blank">
+                <div class="card-preview preview-zen">
+                    禅
+                </div>
+                <div class="card-info">
+                    <div class="card-title">Japanese Zen</div>
+                    <div class="card-description">
+                        Extreme minimalism with kinetic energy. Asymmetric layout, ripple effects, origami animations, and falling cherry blossoms.
+                    </div>
+                    <div class="features">
+                        <span class="feature-tag">Ripple Effects</span>
+                        <span class="feature-tag">Cherry Blossoms</span>
+                        <span class="feature-tag">Focus Mode</span>
+                        <span class="feature-tag">Zen Sounds</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Cyberpunk -->
+            <a href="http://localhost:8004" class="design-card" target="_blank">
+                <div class="card-preview preview-cyberpunk">
+                    NEON
+                </div>
+                <div class="card-info">
+                    <div class="card-title">Cyberpunk Neon</div>
+                    <div class="card-description">
+                        Retro-futuristic 1980s arcade aesthetic. Neon glows, CRT effects, scan lines, glitch animations, and a combo system.
+                    </div>
+                    <div class="features">
+                        <span class="feature-tag">CRT Effects</span>
+                        <span class="feature-tag">Glitch FX</span>
+                        <span class="feature-tag">Combo System</span>
+                        <span class="feature-tag">8-bit Sounds</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="instructions">
+            <h2>✨ Features Across All Designs</h2>
+            <p>• <strong>Mobile-First</strong> - Optimized for touch interactions and gestures</p>
+            <p>• <strong>Gesture Controls</strong> - Swipe and tap to control timers</p>
+            <p>• <strong>Haptic Feedback</strong> - Vibration on interactions (mobile)</p>
+            <p>• <strong>Sound Effects</strong> - Unique audio for each design theme</p>
+            <p>• <strong>Player Profiles</strong> - Save and select players</p>
+            <p>• <strong>Session Statistics</strong> - Track games and average times</p>
+            <p>• <strong>Keyboard Shortcuts</strong> - Space (pause/play), R (reset)</p>
+            <p>• <strong>Customizable</strong> - Time presets and custom durations</p>
+            <p>• <strong>Low Time Warnings</strong> - Visual and audio cues</p>
+            <p>• <strong>Zero Dependencies</strong> - Pure HTML/CSS/JavaScript</p>
+        </div>
+
+        <footer>
+            <p>Designed & Developed with Claude Code • 2025</p>
+            <p>Each design demonstrates different approaches to mobile-first web development</p>
+        </footer>
+    </div>
+
+    <script>
+        // Prevent accidental navigation
+        document.querySelectorAll('.design-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                const url = this.href;
+                // Check if server is running by attempting to fetch
+                fetch(url, { method: 'HEAD', mode: 'no-cors' })
+                    .catch(() => {
+                        e.preventDefault();
+                        alert('Server not running! Please start the server first using the commands above.');
+                    });
+            });
+        });
+    </script>
+</body>
+</html>
