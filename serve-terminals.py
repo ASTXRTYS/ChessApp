@@ -11,35 +11,36 @@ import os
 import sys
 
 # Configuration
+# Ports 8005-8009 to avoid conflict with original gallery (8001-8004)
 TERMINALS = [
     {
         'name': 'Matrix Rain Terminal',
         'dir': 'terminal-matrix',
-        'port': 8001,
+        'port': 8005,
         'color': '\033[92m'  # Green
     },
     {
         'name': 'Neon Grid Terminal',
         'dir': 'terminal-neon-grid',
-        'port': 8002,
+        'port': 8006,
         'color': '\033[96m'  # Cyan
     },
     {
         'name': 'Tactical Terminal',
         'dir': 'terminal-tactical',
-        'port': 8003,
+        'port': 8007,
         'color': '\033[93m'  # Yellow
     },
     {
         'name': 'Holographic Terminal',
         'dir': 'terminal-hologram',
-        'port': 8004,
+        'port': 8008,
         'color': '\033[94m'  # Blue
     },
     {
         'name': 'Glitch Terminal',
         'dir': 'terminal-glitch',
-        'port': 8005,
+        'port': 8009,
         'color': '\033[95m'  # Magenta
     }
 ]

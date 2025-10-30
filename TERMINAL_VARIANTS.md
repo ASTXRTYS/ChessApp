@@ -10,7 +10,7 @@ Five distinct terminal/hacker-themed chess clock designs, each with unique aesth
 
 ### 1. Matrix Rain Terminal
 **Directory:** `terminal-matrix/`
-**Port:** `8001`
+**Port:** `8005`
 **Aesthetic:** Classic Matrix green-on-black with cascading code
 
 **Features:**
@@ -30,7 +30,7 @@ Five distinct terminal/hacker-themed chess clock designs, each with unique aesth
 
 ### 2. Neon Grid Terminal
 **Directory:** `terminal-neon-grid/`
-**Port:** `8002`
+**Port:** `8006`
 **Aesthetic:** 80s Synthwave with perspective grid and neon colors
 
 **Features:**
@@ -51,7 +51,7 @@ Five distinct terminal/hacker-themed chess clock designs, each with unique aesth
 
 ### 3. Military Tactical Terminal
 **Directory:** `terminal-tactical/`
-**Port:** `8003`
+**Port:** `8007`
 **Aesthetic:** Vintage amber CRT monitor with tactical HUD elements
 
 **Features:**
@@ -72,7 +72,7 @@ Five distinct terminal/hacker-themed chess clock designs, each with unique aesth
 
 ### 4. Holographic Terminal
 **Directory:** `terminal-hologram/`
-**Port:** `8004`
+**Port:** `8008`
 **Aesthetic:** Futuristic sci-fi hologram with particle effects
 
 **Features:**
@@ -93,7 +93,7 @@ Five distinct terminal/hacker-themed chess clock designs, each with unique aesth
 
 ### 5. Glitch Terminal
 **Directory:** `terminal-glitch/`
-**Port:** `8005`
+**Port:** `8009`
 **Aesthetic:** Cyberpunk data corruption with RGB chromatic aberration
 
 **Features:**
@@ -114,28 +114,38 @@ Five distinct terminal/hacker-themed chess clock designs, each with unique aesth
 
 ## 🚀 Quick Start
 
-### Option 1: Multi-Port Server (Recommended)
+### Option 1: All Variants via Gallery (Recommended)
 
-Run all 5 variants simultaneously on different ports:
+Launch all 9 variants (4 original + 5 terminals) using the main launcher:
+
+```bash
+./launch-all.sh
+```
+
+This starts all variants on ports 8001-8009 and opens the gallery at index.html
+
+### Option 2: Terminal Variants Only
+
+Run just the 5 terminal variants:
 
 ```bash
 python3 serve-terminals.py
 ```
 
 This will start:
-- Matrix Rain Terminal: http://localhost:8001
-- Neon Grid Terminal: http://localhost:8002
-- Tactical Terminal: http://localhost:8003
-- Holographic Terminal: http://localhost:8004
-- Glitch Terminal: http://localhost:8005
+- Matrix Rain Terminal: http://localhost:8005
+- Neon Grid Terminal: http://localhost:8006
+- Tactical Terminal: http://localhost:8007
+- Holographic Terminal: http://localhost:8008
+- Glitch Terminal: http://localhost:8009
 
-### Option 2: Individual Variant
+### Option 3: Individual Variant
 
 Navigate to any variant directory and open `index.html`:
 
 ```bash
 cd terminal-matrix
-python3 -m http.server 8001
+python3 -m http.server 8005
 ```
 
 ---
