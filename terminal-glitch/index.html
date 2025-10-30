@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>GLITCH TERMINAL - Chess Clock</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --glitch-pink: #ff00ff;
+            --glitch-cyan: #00ffff;
+            --glitch-green: #00ff00;
+            --glitch-purple: #aa00ff;
+            --dark-bg: #0d0015;
+        }
+
+        body {
+            font-family: 'Courier New', 'Consolas', monospace;
+            overflow: hidden;
+            touch-action: none;
+            background: var(--dark-bg);
+            color: var(--glitch-cyan);
+        }
+
+        /* Digital Noise Background */
+        #noiseCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.15;
+            mix-blend-mode: overlay;
+        }
+
+        /* RGB Split Effect */
+        .rgb-split {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            animation: rgb-shift 0.3s infinite;
+            mix-blend-mode: screen;
+            opacity: 0.3;
+        }
+
+        @keyframes rgb-shift {
+            0% { transform: translate(0, 0); }
+            33% { transform: translate(-2px, 0); }
+            66% { transform: translate(2px, 0); }
+            100% { transform: translate(0, 0); }
+        }
+
+        /* Scanline Distortion */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(255, 0, 255, 0.1) 2px,
+                rgba(255, 0, 255, 0.1) 4px
+            );
+            pointer-events: none;
+            z-index: 9998;
+            animation: scanline-glitch 5s infinite;
+        }
+
+        @keyframes scanline-glitch {
+            0%, 90%, 100% { transform: translateY(0); }
+            91% { transform: translateY(-5px); }
+            93% { transform: translateY(5px); }
+            95% { transform: translateY(-3px); }
+            97% { transform: translateY(0); }
+        }
+
+        /* Vignette */
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, transparent 0%, rgba(170, 0, 255, 0.3) 100%);
+            pointer-events: none;
+            z-index: 9997;
+        }
+
+        /* Timer Container */
+        .timer-zone {
+            height: 50vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.85);
+            border: 3px solid var(--glitch-purple);
+            transition: all 0.2s ease;
+        }
+
+        /* Glitch Bars */
+        .glitch-bar {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--glitch-pink), var(--glitch-cyan));
+            opacity: 0.6;
+            animation: glitch-bar-move 3s linear infinite;
+            mix-blend-mode: screen;
+            pointer-events: none;
+        }
+
+        @keyframes glitch-bar-move {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+
+        .timer-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 20px,
+                rgba(255, 0, 255, 0.05) 20px,
+                rgba(255, 0, 255, 0.05) 40px
+            );
+            pointer-events: none;
+            z-index: 1;
+            animation: pattern-shift 10s linear infinite;
+        }
+
+        @keyframes pattern-shift {
+            0% { background-position: 0 0; }
+            100% { background-position: 100px 100px; }
+        }
+
+        .timer-zone.active {
+            background: rgba(170, 0, 255, 0.2);
+            border-color: var(--glitch-cyan);
+            box-shadow:
+                inset 0 0 50px rgba(0, 255, 255, 0.2),
+                0 0 30px rgba(0, 255, 255, 0.5);
+            animation: glitch-zone 0.5s infinite;
+        }
+
+        @keyframes glitch-zone {
+            0%, 90%, 100% { transform: translate(0, 0); }
+            91% { transform: translate(-3px, 2px); }
+            93% { transform: translate(3px, -2px); }
+            95% { transform: translate(-2px, -1px); }
+            97% { transform: translate(2px, 1px); }
+        }
+
+        .timer-zone.inactive {
+            opacity: 0.4;
+            filter: grayscale(0.5);
+        }
+
+        .timer-zone.p1 {
+            border-bottom: none;
+        }
+
+        .timer-zone.p2 {
+            transform: rotate(180deg);
+            border-top: none;
+        }
+
+        .timer-zone.p2.active {
+            transform: rotate(180deg);
+        }
+
+        /* Glitch Time Display */
+        .time-display {
+            font-size: clamp(70px, 20vw, 140px);
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            color: var(--glitch-cyan);
+            text-shadow:
+                -2px 0 var(--glitch-pink),
+                2px 0 var(--glitch-green),
+                0 0 20px var(--glitch-cyan);
+            font-variant-numeric: tabular-nums;
+            position: relative;
+            z-index: 10;
+            letter-spacing: 0.2em;
+            animation: glitch-text 1s infinite;
+        }
+
+        @keyframes glitch-text {
+            0%, 85%, 100% {
+                text-shadow:
+                    -2px 0 var(--glitch-pink),
+                    2px 0 var(--glitch-green),
+                    0 0 20px var(--glitch-cyan);
+                transform: translate(0, 0);
+            }
+            86% {
+                text-shadow:
+                    -4px 0 var(--glitch-pink),
+                    4px 0 var(--glitch-green),
+                    0 0 30px var(--glitch-cyan);
+                transform: translate(-3px, 2px);
+            }
+            88% {
+                text-shadow:
+                    4px 0 var(--glitch-pink),
+                    -4px 0 var(--glitch-green),
+                    0 0 25px var(--glitch-cyan);
+                transform: translate(3px, -2px);
+            }
+            90% {
+                text-shadow:
+                    -2px 0 var(--glitch-pink),
+                    2px 0 var(--glitch-green),
+                    0 0 20px var(--glitch-cyan);
+                transform: translate(0, 0);
+            }
+        }
+
+        .timer-zone.active .time-display {
+            animation: glitch-text-intense 0.3s infinite;
+        }
+
+        @keyframes glitch-text-intense {
+            0%, 70%, 100% {
+                text-shadow:
+                    -2px 0 var(--glitch-pink),
+                    2px 0 var(--glitch-green),
+                    0 0 20px var(--glitch-cyan);
+                transform: translate(0, 0) scale(1);
+            }
+            71% {
+                text-shadow:
+                    -6px 0 var(--glitch-pink),
+                    6px 0 var(--glitch-green),
+                    0 0 40px var(--glitch-cyan);
+                transform: translate(-4px, 2px) scale(1.02);
+            }
+            75% {
+                text-shadow:
+                    6px 0 var(--glitch-pink),
+                    -6px 0 var(--glitch-green),
+                    0 0 35px var(--glitch-cyan);
+                transform: translate(4px, -2px) scale(1.02);
+            }
+            80% {
+                text-shadow:
+                    -3px 0 var(--glitch-pink),
+                    3px 0 var(--glitch-green),
+                    0 0 25px var(--glitch-cyan);
+                transform: translate(-2px, 1px) scale(1.01);
+            }
+        }
+
+        /* Corrupted Label */
+        .player-label {
+            font-size: clamp(16px, 4vw, 24px);
+            font-family: 'Courier New', monospace;
+            color: var(--glitch-pink);
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 10;
+            text-shadow:
+                -1px 0 var(--glitch-cyan),
+                1px 0 var(--glitch-green),
+                0 0 10px var(--glitch-pink);
+            letter-spacing: 0.4em;
+            font-weight: bold;
+            animation: label-corrupt 2s infinite;
+        }
+
+        @keyframes label-corrupt {
+            0%, 95%, 100% { opacity: 1; }
+            96% { opacity: 0.7; }
+            97% { opacity: 1; }
+            98% { opacity: 0.8; }
+        }
+
+        .player-label::before {
+            content: '◢';
+            margin-right: 10px;
+            animation: symbol-glitch 3s infinite;
+        }
+
+        .player-label::after {
+            content: '◣';
+            margin-left: 10px;
+            animation: symbol-glitch 3s infinite;
+            animation-delay: 1.5s;
+        }
+
+        @keyframes symbol-glitch {
+            0%, 90%, 100% { opacity: 1; }
+            91%, 93%, 95% { opacity: 0.3; }
+            92%, 94% { opacity: 1; }
+        }
+
+        /* Status Info */
+        .status-info {
+            font-size: clamp(12px, 3vw, 16px);
+            font-family: 'Courier New', monospace;
+            color: var(--glitch-green);
+            margin-top: 20px;
+            position: relative;
+            z-index: 10;
+            text-shadow:
+                -1px 0 var(--glitch-pink),
+                1px 0 var(--glitch-cyan),
+                0 0 10px var(--glitch-green);
+            letter-spacing: 0.3em;
+        }
+
+        /* Pixel Corruption Effect */
+        .pixel-corrupt {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .corrupt-block {
+            position: absolute;
+            background: rgba(255, 0, 255, 0.3);
+            animation: corrupt-flash 0.1s infinite;
+        }
+
+        @keyframes corrupt-flash {
+            0%, 50%, 100% { opacity: 0; }
+            25%, 75% { opacity: 0.3; }
+        }
+
+        /* Low Time Warning */
+        .timer-zone.low-time-30 {
+            animation: warning-glitch-30 1s ease-in-out infinite;
+        }
+
+        .timer-zone.low-time-10 {
+            animation: warning-glitch-10 0.5s ease-in-out infinite;
+        }
+
+        .timer-zone.low-time-10 .time-display {
+            color: #ff0055;
+            text-shadow:
+                -3px 0 var(--glitch-cyan),
+                3px 0 var(--glitch-green),
+                0 0 30px #ff0055;
+        }
+
+        @keyframes warning-glitch-30 {
+            0%, 100% { border-color: var(--glitch-purple); }
+            50% { border-color: var(--glitch-pink); }
+        }
+
+        @keyframes warning-glitch-10 {
+            0%, 100% {
+                border-color: #ff0055;
+                box-shadow: 0 0 60px #ff0055;
+                transform: translate(0, 0);
+            }
+            25% {
+                transform: translate(-2px, 2px);
+            }
+            50% {
+                border-color: #ff0000;
+                box-shadow: 0 0 80px #ff0000;
+            }
+            75% {
+                transform: translate(2px, -2px);
+            }
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid var(--glitch-purple);
+            border-bottom: none;
+            padding: 20px;
+            border-radius: 0;
+            z-index: 1000;
+            width: 90%;
+            max-width: 400px;
+            box-shadow:
+                0 -5px 40px rgba(170, 0, 255, 0.6),
+                inset 0 0 30px rgba(255, 0, 255, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .control-panel.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .control-toggle {
+            position: fixed;
+            bottom: 50%;
+            right: 10px;
+            transform: translateY(50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid var(--glitch-purple);
+            color: var(--glitch-cyan);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 10px 6px;
+            cursor: pointer;
+            z-index: 999;
+            border-radius: 0;
+            writing-mode: vertical-rl;
+            text-shadow:
+                -1px 0 var(--glitch-pink),
+                1px 0 var(--glitch-green),
+                0 0 10px var(--glitch-cyan);
+            box-shadow: -2px 0 20px rgba(170, 0, 255, 0.5);
+            transition: all 0.3s ease;
+            animation: button-glitch 5s infinite;
+        }
+
+        @keyframes button-glitch {
+            0%, 95%, 100% { transform: translateY(50%); }
+            96% { transform: translateY(50%) translate(-2px, 2px); }
+            98% { transform: translateY(50%) translate(2px, -2px); }
+        }
+
+        .control-toggle:hover {
+            background: rgba(170, 0, 255, 0.3);
+            box-shadow: -2px 0 30px rgba(0, 255, 255, 0.8);
+        }
+
+        .control-section {
+            margin-bottom: 15px;
+        }
+
+        .control-section h3 {
+            color: var(--glitch-pink);
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+            text-shadow:
+                -1px 0 var(--glitch-cyan),
+                1px 0 var(--glitch-green),
+                0 0 10px var(--glitch-pink);
+            letter-spacing: 0.3em;
+        }
+
+        .control-section h3::before {
+            content: '▸ ';
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: rgba(170, 0, 255, 0.2);
+            border: 2px solid var(--glitch-purple);
+            color: var(--glitch-cyan);
+            font-family: 'Courier New', monospace;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 0;
+            transition: all 0.2s;
+            text-shadow:
+                -1px 0 var(--glitch-pink),
+                1px 0 var(--glitch-green),
+                0 0 5px var(--glitch-cyan);
+            box-shadow: 0 0 15px rgba(170, 0, 255, 0.3);
+            flex: 1;
+            min-width: 70px;
+        }
+
+        button:hover {
+            background: rgba(170, 0, 255, 0.4);
+            border-color: var(--glitch-cyan);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+            transform: translate(-1px, 1px);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.active {
+            background: var(--glitch-purple);
+            color: white;
+            text-shadow: none;
+            box-shadow: 0 0 30px var(--glitch-purple);
+        }
+
+        /* Winner Display */
+        .winner-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0, 0, 0, 0.95);
+            border: 4px solid var(--glitch-cyan);
+            padding: 40px;
+            border-radius: 0;
+            z-index: 10000;
+            text-align: center;
+            box-shadow:
+                0 0 60px rgba(0, 255, 255, 0.9),
+                inset 0 0 40px rgba(255, 0, 255, 0.3);
+            transition: transform 0.5s ease;
+        }
+
+        .winner-display.show {
+            transform: translate(-50%, -50%) scale(1);
+            animation: victory-glitch 0.5s infinite;
+        }
+
+        @keyframes victory-glitch {
+            0%, 90%, 100% { transform: translate(-50%, -50%) scale(1); }
+            91% { transform: translate(-50%, -50%) translate(-3px, 3px) scale(1); }
+            93% { transform: translate(-50%, -50%) translate(3px, -3px) scale(1); }
+            95% { transform: translate(-50%, -50%) translate(-2px, -2px) scale(1); }
+            97% { transform: translate(-50%, -50%) translate(2px, 2px) scale(1); }
+        }
+
+        .winner-display h2 {
+            font-size: clamp(30px, 8vw, 50px);
+            color: var(--glitch-cyan);
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            text-shadow:
+                -3px 0 var(--glitch-pink),
+                3px 0 var(--glitch-green),
+                0 0 30px var(--glitch-cyan);
+            letter-spacing: 0.4em;
+        }
+
+        .winner-display p {
+            font-size: 18px;
+            color: var(--glitch-pink);
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            text-shadow:
+                -1px 0 var(--glitch-cyan),
+                1px 0 var(--glitch-green),
+                0 0 15px var(--glitch-pink);
+        }
+
+        /* Gesture Hint */
+        .gesture-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--glitch-cyan);
+            text-shadow:
+                -2px 0 var(--glitch-pink),
+                2px 0 var(--glitch-green),
+                0 0 20px var(--glitch-cyan);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 9996;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <!-- Digital Noise Canvas -->
+    <canvas id="noiseCanvas"></canvas>
+
+    <!-- Glitch Effects -->
+    <div class="rgb-split"></div>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
+    <!-- Timer Zones -->
+    <div class="timer-zone p1" data-player="1">
+        <div class="glitch-bar" style="animation-delay: 0s;"></div>
+        <div class="glitch-bar" style="animation-delay: 1.5s;"></div>
+        <div class="pixel-corrupt">
+            <div class="corrupt-block" style="top: 10%; left: 20%; width: 30px; height: 20px; animation-delay: 0.1s;"></div>
+            <div class="corrupt-block" style="top: 60%; left: 70%; width: 40px; height: 15px; animation-delay: 0.3s;"></div>
+        </div>
+        <div class="player-label">USER_01</div>
+        <div class="time-display" id="time1">05:00</div>
+        <div class="status-info" id="moves1">EXEC: 0</div>
+    </div>
+
+    <div class="timer-zone p2" data-player="2">
+        <div class="glitch-bar" style="animation-delay: 0.75s;"></div>
+        <div class="glitch-bar" style="animation-delay: 2.25s;"></div>
+        <div class="pixel-corrupt">
+            <div class="corrupt-block" style="top: 25%; left: 15%; width: 35px; height: 18px; animation-delay: 0.2s;"></div>
+            <div class="corrupt-block" style="top: 70%; left: 65%; width: 25px; height: 22px; animation-delay: 0.4s;"></div>
+        </div>
+        <div class="player-label">USER_02</div>
+        <div class="time-display" id="time2">05:00</div>
+        <div class="status-info" id="moves2">EXEC: 0</div>
+    </div>
+
+    <!-- Control Toggle -->
+    <button class="control-toggle" onclick="toggleControls()">ACCESS</button>
+
+    <!-- Control Panel -->
+    <div class="control-panel" id="controlPanel">
+        <div class="control-section">
+            <h3>TIME LIMIT</h3>
+            <div class="btn-group">
+                <button onclick="setTime(60)">1m</button>
+                <button onclick="setTime(180)">3m</button>
+                <button onclick="setTime(300)">5m</button>
+                <button onclick="setTime(600)">10m</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>CONTROLS</h3>
+            <div class="btn-group">
+                <button onclick="togglePause()" id="pauseBtn">PAUSE</button>
+                <button onclick="resetGame()">RESET</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>OPTIONS</h3>
+            <div class="btn-group">
+                <button onclick="toggleSound()" id="soundBtn" class="active">SND</button>
+                <button onclick="toggleHaptic()" id="hapticBtn" class="active">VIB</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Winner Display -->
+    <div class="winner-display" id="winnerDisplay">
+        <h2>▣ ERROR ▣</h2>
+        <p id="winnerText">USER_01 TERMINATED</p>
+        <button onclick="resetGame()">REBOOT</button>
+    </div>
+
+    <!-- Gesture Hint -->
+    <div class="gesture-hint" id="gestureHint">GLITCH</div>
+
+    <script>
+        // Digital Noise Effect
+        const canvas = document.getElementById('noiseCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        function drawNoise() {
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+            const data = imageData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const noise = Math.random() * 255;
+                data[i] = noise;     // Red
+                data[i + 1] = noise; // Green
+                data[i + 2] = noise; // Blue
+                data[i + 3] = 50;    // Alpha
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        setInterval(drawNoise, 50);
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Game State
+        let player1Time = 300;
+        let player2Time = 300;
+        let activePlayer = 0;
+        let isPaused = true;
+        let interval = null;
+        let player1Moves = 0;
+        let player2Moves = 0;
+        let soundEnabled = true;
+        let hapticEnabled = true;
+
+        // Touch gesture tracking
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        // Audio Context
+        let audioContext = null;
+
+        // Control Panel
+        function toggleControls() {
+            const panel = document.getElementById('controlPanel');
+            panel.classList.toggle('visible');
+        }
+
+        // Audio
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type = 'click') {
+            if (!soundEnabled) return;
+
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            if (type === 'click') {
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.05);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'win') {
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(150, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(75, audioContext.currentTime + 0.2);
+                oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.4);
+                gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.6);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.6);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundBtn').classList.toggle('active', soundEnabled);
+        }
+
+        function toggleHaptic() {
+            hapticEnabled = !hapticEnabled;
+            document.getElementById('hapticBtn').classList.toggle('active', hapticEnabled);
+        }
+
+        // Haptic feedback
+        function vibrate(pattern = 50) {
+            if (hapticEnabled && navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // Timer functions
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            document.getElementById('time1').textContent = formatTime(player1Time);
+            document.getElementById('time2').textContent = formatTime(player2Time);
+            document.getElementById('moves1').textContent = `EXEC: ${player1Moves}`;
+            document.getElementById('moves2').textContent = `EXEC: ${player2Moves}`;
+
+            const zone1 = document.querySelector('.timer-zone.p1');
+            const zone2 = document.querySelector('.timer-zone.p2');
+
+            zone1.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+            zone2.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+
+            if (activePlayer === 1) {
+                zone1.classList.add('active');
+                zone2.classList.add('inactive');
+                if (player1Time <= 10) zone1.classList.add('low-time-10');
+                else if (player1Time <= 30) zone1.classList.add('low-time-30');
+            } else if (activePlayer === 2) {
+                zone2.classList.add('active');
+                zone1.classList.add('inactive');
+                if (player2Time <= 10) zone2.classList.add('low-time-10');
+                else if (player2Time <= 30) zone2.classList.add('low-time-30');
+            } else {
+                zone1.classList.add('inactive');
+                zone2.classList.add('inactive');
+            }
+
+            if (player1Time <= 0) {
+                stopClock();
+                showWinner(2);
+            } else if (player2Time <= 0) {
+                stopClock();
+                showWinner(1);
+            }
+        }
+
+        function tick() {
+            if (activePlayer === 1) {
+                player1Time--;
+            } else if (activePlayer === 2) {
+                player2Time--;
+            }
+            updateDisplay();
+        }
+
+        function startClock() {
+            if (!interval && !isPaused) {
+                interval = setInterval(tick, 1000);
+            }
+        }
+
+        function stopClock() {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+            isPaused = true;
+            activePlayer = 0;
+            updatePauseButton();
+        }
+
+        function switchPlayer(player) {
+            if (player1Time <= 0 || player2Time <= 0) return;
+
+            if (activePlayer === player || activePlayer === 0) {
+                playSound('click');
+                vibrate(50);
+
+                if (activePlayer === 0) {
+                    activePlayer = player;
+                    isPaused = false;
+                } else {
+                    if (player === 1) player1Moves++;
+                    else player2Moves++;
+                    activePlayer = player === 1 ? 2 : 1;
+                }
+
+                if (!isPaused) {
+                    startClock();
+                }
+                updateDisplay();
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                stopClock();
+            } else if (activePlayer !== 0) {
+                startClock();
+            }
+            updatePauseButton();
+        }
+
+        function updatePauseButton() {
+            document.getElementById('pauseBtn').textContent = isPaused ? 'RESUME' : 'PAUSE';
+        }
+
+        function setTime(seconds) {
+            player1Time = seconds;
+            player2Time = seconds;
+            resetGame();
+        }
+
+        function resetGame() {
+            stopClock();
+            activePlayer = 0;
+            player1Moves = 0;
+            player2Moves = 0;
+            updateDisplay();
+            document.getElementById('winnerDisplay').classList.remove('show');
+        }
+
+        function showWinner(player) {
+            playSound('win');
+            vibrate([100, 50, 100, 50, 200]);
+            const userName = player === 1 ? 'USER_01' : 'USER_02';
+            const loserName = player === 1 ? 'USER_02' : 'USER_01';
+            document.getElementById('winnerText').textContent = `${loserName} TERMINATED`;
+            document.getElementById('winnerDisplay').classList.add('show');
+        }
+
+        // Touch events
+        document.querySelectorAll('.timer-zone').forEach(zone => {
+            zone.addEventListener('touchstart', handleTouchStart, { passive: false });
+            zone.addEventListener('touchend', handleTouchEnd, { passive: false });
+            zone.addEventListener('click', (e) => {
+                e.preventDefault();
+                const player = parseInt(zone.dataset.player);
+                switchPlayer(player);
+            });
+        });
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            const player = parseInt(e.target.closest('.timer-zone').dataset.player);
+            switchPlayer(player);
+        }
+
+        // Initialize
+        updateDisplay();
+    </script>
+</body>
+</html>

@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TACTICAL TERMINAL - Chess Clock</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --amber: #ff9500;
+            --amber-bright: #ffb84d;
+            --amber-dim: #cc7700;
+            --dark-bg: #0a0600;
+            --radar-green: #00ff00;
+        }
+
+        body {
+            font-family: 'Courier New', 'Consolas', monospace;
+            overflow: hidden;
+            touch-action: none;
+            background: var(--dark-bg);
+            color: var(--amber);
+        }
+
+        /* CRT Phosphor Glow Background */
+        .phosphor-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, rgba(255, 149, 0, 0.05) 0%, var(--dark-bg) 70%);
+            z-index: 0;
+        }
+
+        /* Heavy CRT Scanlines */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.6) 2px,
+                rgba(0, 0, 0, 0.6) 3px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* CRT Vignette */
+        .crt-vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.9) 100%);
+            pointer-events: none;
+            z-index: 9998;
+        }
+
+        /* Radar Sweep */
+        .radar-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 80px;
+            height: 80px;
+            border: 2px solid var(--amber-dim);
+            border-radius: 50%;
+            z-index: 100;
+            opacity: 0.6;
+        }
+
+        .radar-sweep {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--radar-green), transparent);
+            transform-origin: 0% 50%;
+            animation: radar-spin 4s linear infinite;
+        }
+
+        @keyframes radar-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .radar-dot {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--radar-green);
+            border-radius: 50%;
+            box-shadow: 0 0 5px var(--radar-green);
+            animation: radar-ping 2s ease-in-out infinite;
+        }
+
+        @keyframes radar-ping {
+            0%, 100% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Timer Container */
+        .timer-zone {
+            height: 50vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid var(--amber-dim);
+            transition: all 0.3s ease;
+        }
+
+        /* Targeting Corners */
+        .timer-zone::before,
+        .timer-zone::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--amber);
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .timer-zone::before {
+            top: 10px;
+            left: 10px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .timer-zone::after {
+            bottom: 10px;
+            right: 10px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .timer-zone.active::before,
+        .timer-zone.active::after {
+            opacity: 1;
+            animation: corner-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes corner-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .timer-zone.active {
+            background: rgba(255, 149, 0, 0.1);
+            border-color: var(--amber);
+            box-shadow: inset 0 0 50px rgba(255, 149, 0, 0.2),
+                        0 0 20px rgba(255, 149, 0, 0.4);
+        }
+
+        .timer-zone.inactive {
+            opacity: 0.3;
+        }
+
+        .timer-zone.p1 {
+            border-bottom: none;
+        }
+
+        .timer-zone.p2 {
+            transform: rotate(180deg);
+            border-top: none;
+        }
+
+        .timer-zone.p2.active {
+            transform: rotate(180deg);
+        }
+
+        /* Tactical HUD Overlay */
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .hud-line {
+            position: absolute;
+            background: var(--amber-dim);
+            opacity: 0.3;
+        }
+
+        .hud-line.h {
+            height: 1px;
+            width: 100%;
+        }
+
+        .hud-line.v {
+            width: 1px;
+            height: 100%;
+        }
+
+        /* Amber Time Display */
+        .time-display {
+            font-size: clamp(70px, 20vw, 140px);
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            color: var(--amber);
+            text-shadow:
+                0 0 10px var(--amber),
+                0 0 20px var(--amber),
+                0 0 30px var(--amber-bright);
+            font-variant-numeric: tabular-nums;
+            position: relative;
+            z-index: 10;
+            letter-spacing: 0.2em;
+            animation: crt-flicker 4s infinite;
+        }
+
+        @keyframes crt-flicker {
+            0%, 100% { opacity: 1; }
+            50.1%, 50.2%, 50.3% { opacity: 0.9; }
+        }
+
+        .timer-zone.active .time-display {
+            animation: crt-flicker 4s infinite, amber-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes amber-pulse {
+            0%, 100% {
+                text-shadow:
+                    0 0 10px var(--amber),
+                    0 0 20px var(--amber),
+                    0 0 30px var(--amber-bright);
+            }
+            50% {
+                text-shadow:
+                    0 0 15px var(--amber),
+                    0 0 30px var(--amber),
+                    0 0 45px var(--amber-bright),
+                    0 0 60px var(--amber-bright);
+                transform: scale(1.02);
+            }
+        }
+
+        /* Tactical Label */
+        .player-label {
+            font-size: clamp(14px, 4vw, 20px);
+            font-family: 'Courier New', monospace;
+            color: var(--amber);
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 10;
+            text-shadow: 0 0 10px var(--amber);
+            letter-spacing: 0.3em;
+            font-weight: bold;
+        }
+
+        .player-label::before {
+            content: '[ ';
+        }
+
+        .player-label::after {
+            content: ' ]';
+        }
+
+        /* Target Lock Animation */
+        .target-lock {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 2px solid var(--amber);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        .target-lock::before,
+        .target-lock::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--amber);
+        }
+
+        .target-lock::before {
+            top: -2px;
+            left: -2px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .target-lock::after {
+            bottom: -2px;
+            right: -2px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .timer-zone.active .target-lock {
+            opacity: 1;
+            animation: target-acquire 2s ease-in-out infinite;
+        }
+
+        @keyframes target-acquire {
+            0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+            50% { transform: translate(-50%, -50%) scale(1.2) rotate(90deg); }
+        }
+
+        /* Status Info */
+        .status-info {
+            font-size: clamp(12px, 3vw, 16px);
+            font-family: 'Courier New', monospace;
+            color: var(--amber-dim);
+            margin-top: 15px;
+            position: relative;
+            z-index: 10;
+            text-shadow: 0 0 5px var(--amber);
+            letter-spacing: 0.2em;
+        }
+
+        /* Low Time Warning */
+        .timer-zone.low-time-30 {
+            animation: warning-pulse-30 1.5s ease-in-out infinite;
+        }
+
+        .timer-zone.low-time-10 {
+            animation: warning-pulse-10 0.8s ease-in-out infinite;
+        }
+
+        .timer-zone.low-time-10 .time-display {
+            color: #ff0000;
+            text-shadow:
+                0 0 10px #ff0000,
+                0 0 20px #ff0000,
+                0 0 30px #ff0000;
+        }
+
+        @keyframes warning-pulse-30 {
+            0%, 100% { border-color: var(--amber-dim); }
+            50% { border-color: var(--amber-bright); }
+        }
+
+        @keyframes warning-pulse-10 {
+            0%, 100% {
+                border-color: #ff0000;
+                box-shadow: 0 0 50px #ff0000;
+            }
+            50% {
+                border-color: #ff6600;
+                box-shadow: 0 0 80px #ff0000;
+            }
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid var(--amber);
+            border-bottom: none;
+            padding: 20px;
+            border-radius: 0;
+            z-index: 1000;
+            width: 90%;
+            max-width: 400px;
+            box-shadow:
+                0 -5px 30px rgba(255, 149, 0, 0.5),
+                inset 0 0 20px rgba(255, 149, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .control-panel.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .control-toggle {
+            position: fixed;
+            bottom: 50%;
+            right: 10px;
+            transform: translateY(50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid var(--amber);
+            color: var(--amber);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 10px 6px;
+            cursor: pointer;
+            z-index: 999;
+            border-radius: 0;
+            writing-mode: vertical-rl;
+            text-shadow: 0 0 10px var(--amber);
+            box-shadow: -2px 0 15px rgba(255, 149, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .control-toggle:hover {
+            background: rgba(255, 149, 0, 0.2);
+            box-shadow: -2px 0 20px rgba(255, 149, 0, 0.8);
+        }
+
+        .control-section {
+            margin-bottom: 15px;
+        }
+
+        .control-section h3 {
+            color: var(--amber);
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px var(--amber);
+            letter-spacing: 0.2em;
+        }
+
+        .control-section h3::before {
+            content: '>> ';
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: rgba(255, 149, 0, 0.1);
+            border: 2px solid var(--amber-dim);
+            color: var(--amber);
+            font-family: 'Courier New', monospace;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 0;
+            transition: all 0.2s;
+            text-shadow: 0 0 5px var(--amber);
+            box-shadow: 0 0 10px rgba(255, 149, 0, 0.2);
+            flex: 1;
+            min-width: 70px;
+        }
+
+        button:hover {
+            background: rgba(255, 149, 0, 0.3);
+            border-color: var(--amber);
+            box-shadow: 0 0 20px rgba(255, 149, 0, 0.6);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.active {
+            background: var(--amber);
+            color: var(--dark-bg);
+            text-shadow: none;
+            box-shadow: 0 0 20px var(--amber);
+        }
+
+        /* Winner Display */
+        .winner-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0, 0, 0, 0.95);
+            border: 4px solid var(--amber);
+            padding: 40px;
+            border-radius: 0;
+            z-index: 10000;
+            text-align: center;
+            box-shadow:
+                0 0 50px rgba(255, 149, 0, 0.8),
+                inset 0 0 30px rgba(255, 149, 0, 0.2);
+            transition: transform 0.5s ease;
+        }
+
+        .winner-display.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .winner-display h2 {
+            font-size: clamp(30px, 8vw, 50px);
+            color: var(--amber);
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            text-shadow:
+                0 0 10px var(--amber),
+                0 0 20px var(--amber),
+                0 0 30px var(--amber-bright);
+            letter-spacing: 0.3em;
+            animation: victory-flash 1s ease-in-out infinite;
+        }
+
+        @keyframes victory-flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .winner-display p {
+            font-size: 18px;
+            color: var(--amber);
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px var(--amber);
+        }
+
+        /* Gesture Hint */
+        .gesture-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--amber);
+            text-shadow:
+                0 0 10px var(--amber),
+                0 0 20px var(--amber);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 9997;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Status Bars */
+        .status-bar {
+            position: fixed;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: var(--amber-dim);
+            z-index: 100;
+            text-shadow: 0 0 5px var(--amber);
+        }
+
+        .status-bar.top {
+            top: 10px;
+            right: 20px;
+        }
+
+        .status-bar.bottom {
+            bottom: 10px;
+            left: 20px;
+        }
+
+        /* Grid Lines */
+        .grid-line {
+            position: absolute;
+            background: var(--amber-dim);
+            opacity: 0.1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Phosphor Background -->
+    <div class="phosphor-bg"></div>
+
+    <!-- CRT Effects -->
+    <div class="crt-vignette"></div>
+    <div class="scanlines"></div>
+
+    <!-- Radar -->
+    <div class="radar-container">
+        <div class="radar-sweep"></div>
+        <div class="radar-dot" style="top: 30%; left: 60%;"></div>
+        <div class="radar-dot" style="top: 70%; left: 40%; animation-delay: 1s;"></div>
+    </div>
+
+    <!-- Status Bars -->
+    <div class="status-bar top">SYS: ACTIVE | CONN: SECURE</div>
+    <div class="status-bar bottom">TACTICAL_CHESS_PROTOCOL_v2.1</div>
+
+    <!-- Timer Zones -->
+    <div class="timer-zone p1" data-player="1">
+        <div class="hud-overlay">
+            <div class="grid-line h" style="top: 25%;"></div>
+            <div class="grid-line h" style="top: 50%;"></div>
+            <div class="grid-line h" style="top: 75%;"></div>
+            <div class="grid-line v" style="left: 25%;"></div>
+            <div class="grid-line v" style="left: 50%;"></div>
+            <div class="grid-line v" style="left: 75%;"></div>
+        </div>
+        <div class="target-lock"></div>
+        <div class="player-label">ALPHA_UNIT</div>
+        <div class="time-display" id="time1">05:00</div>
+        <div class="status-info" id="moves1">OPS: 0</div>
+    </div>
+
+    <div class="timer-zone p2" data-player="2">
+        <div class="hud-overlay">
+            <div class="grid-line h" style="top: 25%;"></div>
+            <div class="grid-line h" style="top: 50%;"></div>
+            <div class="grid-line h" style="top: 75%;"></div>
+            <div class="grid-line v" style="left: 25%;"></div>
+            <div class="grid-line v" style="left: 50%;"></div>
+            <div class="grid-line v" style="left: 75%;"></div>
+        </div>
+        <div class="target-lock"></div>
+        <div class="player-label">BRAVO_UNIT</div>
+        <div class="time-display" id="time2">05:00</div>
+        <div class="status-info" id="moves2">OPS: 0</div>
+    </div>
+
+    <!-- Control Toggle -->
+    <button class="control-toggle" onclick="toggleControls()">COMMAND</button>
+
+    <!-- Control Panel -->
+    <div class="control-panel" id="controlPanel">
+        <div class="control-section">
+            <h3>TIME PRESET</h3>
+            <div class="btn-group">
+                <button onclick="setTime(60)">1m</button>
+                <button onclick="setTime(180)">3m</button>
+                <button onclick="setTime(300)">5m</button>
+                <button onclick="setTime(600)">10m</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>OPERATIONS</h3>
+            <div class="btn-group">
+                <button onclick="togglePause()" id="pauseBtn">PAUSE</button>
+                <button onclick="resetGame()">RESET</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>SYSTEMS</h3>
+            <div class="btn-group">
+                <button onclick="toggleSound()" id="soundBtn" class="active">AUDIO</button>
+                <button onclick="toggleHaptic()" id="hapticBtn" class="active">HAPTIC</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Winner Display -->
+    <div class="winner-display" id="winnerDisplay">
+        <h2>MISSION COMPLETE</h2>
+        <p id="winnerText">ALPHA UNIT VICTORIOUS</p>
+        <button onclick="resetGame()">NEW OPERATION</button>
+    </div>
+
+    <!-- Gesture Hint -->
+    <div class="gesture-hint" id="gestureHint">TACTICAL SWIPE</div>
+
+    <script>
+        // Game State
+        let player1Time = 300;
+        let player2Time = 300;
+        let activePlayer = 0;
+        let isPaused = true;
+        let interval = null;
+        let player1Moves = 0;
+        let player2Moves = 0;
+        let soundEnabled = true;
+        let hapticEnabled = true;
+
+        // Touch gesture tracking
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        // Audio Context
+        let audioContext = null;
+
+        // Control Panel
+        function toggleControls() {
+            const panel = document.getElementById('controlPanel');
+            panel.classList.toggle('visible');
+        }
+
+        // Audio
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type = 'click') {
+            if (!soundEnabled) return;
+
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            if (type === 'click') {
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.05);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'win') {
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.4);
+                gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.6);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.6);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundBtn').classList.toggle('active', soundEnabled);
+        }
+
+        function toggleHaptic() {
+            hapticEnabled = !hapticEnabled;
+            document.getElementById('hapticBtn').classList.toggle('active', hapticEnabled);
+        }
+
+        // Haptic feedback
+        function vibrate(pattern = 50) {
+            if (hapticEnabled && navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // Timer functions
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            document.getElementById('time1').textContent = formatTime(player1Time);
+            document.getElementById('time2').textContent = formatTime(player2Time);
+            document.getElementById('moves1').textContent = `OPS: ${player1Moves}`;
+            document.getElementById('moves2').textContent = `OPS: ${player2Moves}`;
+
+            const zone1 = document.querySelector('.timer-zone.p1');
+            const zone2 = document.querySelector('.timer-zone.p2');
+
+            zone1.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+            zone2.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+
+            if (activePlayer === 1) {
+                zone1.classList.add('active');
+                zone2.classList.add('inactive');
+                if (player1Time <= 10) zone1.classList.add('low-time-10');
+                else if (player1Time <= 30) zone1.classList.add('low-time-30');
+            } else if (activePlayer === 2) {
+                zone2.classList.add('active');
+                zone1.classList.add('inactive');
+                if (player2Time <= 10) zone2.classList.add('low-time-10');
+                else if (player2Time <= 30) zone2.classList.add('low-time-30');
+            } else {
+                zone1.classList.add('inactive');
+                zone2.classList.add('inactive');
+            }
+
+            if (player1Time <= 0) {
+                stopClock();
+                showWinner(2);
+            } else if (player2Time <= 0) {
+                stopClock();
+                showWinner(1);
+            }
+        }
+
+        function tick() {
+            if (activePlayer === 1) {
+                player1Time--;
+            } else if (activePlayer === 2) {
+                player2Time--;
+            }
+            updateDisplay();
+        }
+
+        function startClock() {
+            if (!interval && !isPaused) {
+                interval = setInterval(tick, 1000);
+            }
+        }
+
+        function stopClock() {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+            isPaused = true;
+            activePlayer = 0;
+            updatePauseButton();
+        }
+
+        function switchPlayer(player) {
+            if (player1Time <= 0 || player2Time <= 0) return;
+
+            if (activePlayer === player || activePlayer === 0) {
+                playSound('click');
+                vibrate(50);
+
+                if (activePlayer === 0) {
+                    activePlayer = player;
+                    isPaused = false;
+                } else {
+                    if (player === 1) player1Moves++;
+                    else player2Moves++;
+                    activePlayer = player === 1 ? 2 : 1;
+                }
+
+                if (!isPaused) {
+                    startClock();
+                }
+                updateDisplay();
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                stopClock();
+            } else if (activePlayer !== 0) {
+                startClock();
+            }
+            updatePauseButton();
+        }
+
+        function updatePauseButton() {
+            document.getElementById('pauseBtn').textContent = isPaused ? 'RESUME' : 'PAUSE';
+        }
+
+        function setTime(seconds) {
+            player1Time = seconds;
+            player2Time = seconds;
+            resetGame();
+        }
+
+        function resetGame() {
+            stopClock();
+            activePlayer = 0;
+            player1Moves = 0;
+            player2Moves = 0;
+            updateDisplay();
+            document.getElementById('winnerDisplay').classList.remove('show');
+        }
+
+        function showWinner(player) {
+            playSound('win');
+            vibrate([100, 50, 100, 50, 200]);
+            const unitName = player === 1 ? 'ALPHA UNIT' : 'BRAVO UNIT';
+            document.getElementById('winnerText').textContent = `${unitName} VICTORIOUS`;
+            document.getElementById('winnerDisplay').classList.add('show');
+        }
+
+        // Touch events
+        document.querySelectorAll('.timer-zone').forEach(zone => {
+            zone.addEventListener('touchstart', handleTouchStart, { passive: false });
+            zone.addEventListener('touchend', handleTouchEnd, { passive: false });
+            zone.addEventListener('click', (e) => {
+                e.preventDefault();
+                const player = parseInt(zone.dataset.player);
+                switchPlayer(player);
+            });
+        });
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            const player = parseInt(e.target.closest('.timer-zone').dataset.player);
+            switchPlayer(player);
+        }
+
+        // Initialize
+        updateDisplay();
+    </script>
+</body>
+</html>
