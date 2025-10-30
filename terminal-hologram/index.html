@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>HOLOGRAPHIC TERMINAL - Chess Clock</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --holo-blue: #00d4ff;
+            --holo-cyan: #4dffff;
+            --holo-dark-blue: #0088cc;
+            --holo-white: #e0f7ff;
+            --dark-bg: #000814;
+        }
+
+        body {
+            font-family: 'Courier New', 'Consolas', monospace;
+            overflow: hidden;
+            touch-action: none;
+            background: var(--dark-bg);
+            color: var(--holo-blue);
+        }
+
+        /* Holographic Particle Field */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        /* Light Rays */
+        .light-ray {
+            position: fixed;
+            width: 2px;
+            height: 200px;
+            background: linear-gradient(180deg, transparent, var(--holo-blue), transparent);
+            box-shadow: 0 0 20px var(--holo-blue);
+            animation: light-sweep 8s linear infinite;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        @keyframes light-sweep {
+            0% {
+                transform: translateX(-100vw) translateY(-100vh) rotate(45deg);
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.3;
+            }
+            100% {
+                transform: translateX(200vw) translateY(200vh) rotate(45deg);
+                opacity: 0;
+            }
+        }
+
+        /* Hologram Scan Effect */
+        .holo-scan {
+            position: fixed;
+            top: -100px;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(180deg, transparent, var(--holo-blue));
+            opacity: 0.2;
+            animation: holo-sweep 6s linear infinite;
+            pointer-events: none;
+            z-index: 9997;
+            box-shadow: 0 0 50px var(--holo-blue);
+        }
+
+        @keyframes holo-sweep {
+            0% {
+                top: -100px;
+            }
+            100% {
+                top: 100vh;
+            }
+        }
+
+        /* Glass Effect */
+        .glass-vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 212, 255, 0.1) 100%);
+            pointer-events: none;
+            z-index: 9998;
+        }
+
+        /* Timer Container */
+        .timer-zone {
+            height: 50vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            overflow: hidden;
+            background: rgba(0, 136, 204, 0.05);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            transition: all 0.4s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Holographic Grid */
+        .timer-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 20px,
+                    rgba(0, 212, 255, 0.1) 20px,
+                    rgba(0, 212, 255, 0.1) 21px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 20px,
+                    rgba(0, 212, 255, 0.1) 20px,
+                    rgba(0, 212, 255, 0.1) 21px
+                );
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.3;
+        }
+
+        .timer-zone.active {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: var(--holo-blue);
+            box-shadow:
+                inset 0 0 60px rgba(0, 212, 255, 0.3),
+                0 0 40px rgba(0, 212, 255, 0.6);
+            animation: holo-pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes holo-pulse {
+            0%, 100% {
+                box-shadow:
+                    inset 0 0 60px rgba(0, 212, 255, 0.3),
+                    0 0 40px rgba(0, 212, 255, 0.6);
+            }
+            50% {
+                box-shadow:
+                    inset 0 0 80px rgba(0, 212, 255, 0.5),
+                    0 0 60px rgba(77, 255, 255, 0.8);
+            }
+        }
+
+        .timer-zone.inactive {
+            opacity: 0.3;
+            backdrop-filter: blur(5px);
+        }
+
+        .timer-zone.p1 {
+            border-bottom: none;
+        }
+
+        .timer-zone.p2 {
+            transform: rotate(180deg);
+            border-top: none;
+        }
+
+        .timer-zone.p2.active {
+            transform: rotate(180deg);
+        }
+
+        /* Holographic Time Display */
+        .time-display {
+            font-size: clamp(70px, 20vw, 140px);
+            font-weight: 300;
+            font-family: 'Courier New', monospace;
+            color: var(--holo-cyan);
+            text-shadow:
+                0 0 20px var(--holo-blue),
+                0 0 40px var(--holo-blue),
+                0 0 60px var(--holo-blue),
+                0 0 80px var(--holo-cyan);
+            font-variant-numeric: tabular-nums;
+            position: relative;
+            z-index: 10;
+            letter-spacing: 0.3em;
+            animation: holo-flicker 4s infinite;
+        }
+
+        @keyframes holo-flicker {
+            0%, 100% { opacity: 1; }
+            47%, 48%, 49% { opacity: 0.85; }
+        }
+
+        .timer-zone.active .time-display {
+            animation: holo-flicker 4s infinite, holo-glow 2.5s ease-in-out infinite;
+        }
+
+        @keyframes holo-glow {
+            0%, 100% {
+                text-shadow:
+                    0 0 20px var(--holo-blue),
+                    0 0 40px var(--holo-blue),
+                    0 0 60px var(--holo-blue),
+                    0 0 80px var(--holo-cyan);
+                transform: scale(1);
+            }
+            50% {
+                text-shadow:
+                    0 0 30px var(--holo-blue),
+                    0 0 50px var(--holo-blue),
+                    0 0 70px var(--holo-cyan),
+                    0 0 90px var(--holo-cyan),
+                    0 0 110px var(--holo-white);
+                transform: scale(1.03);
+            }
+        }
+
+        /* Holographic Label */
+        .player-label {
+            font-size: clamp(16px, 4vw, 24px);
+            font-family: 'Courier New', monospace;
+            color: var(--holo-blue);
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 10;
+            text-shadow:
+                0 0 10px var(--holo-blue),
+                0 0 20px var(--holo-blue);
+            letter-spacing: 0.5em;
+            font-weight: 300;
+        }
+
+        .player-label::before,
+        .player-label::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--holo-blue), transparent);
+            top: 50%;
+            box-shadow: 0 0 10px var(--holo-blue);
+        }
+
+        .player-label::before {
+            left: -50px;
+        }
+
+        .player-label::after {
+            right: -50px;
+        }
+
+        /* Floating Hexagons */
+        .hex-frame {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            transform: rotate(45deg);
+            animation: hex-float 8s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .hex-frame.h1 {
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .hex-frame.h2 {
+            top: 60%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        @keyframes hex-float {
+            0%, 100% {
+                transform: rotate(45deg) translateY(0);
+                opacity: 0.3;
+            }
+            50% {
+                transform: rotate(45deg) translateY(-20px);
+                opacity: 0.6;
+            }
+        }
+
+        /* Status Info */
+        .status-info {
+            font-size: clamp(12px, 3vw, 16px);
+            font-family: 'Courier New', monospace;
+            color: var(--holo-dark-blue);
+            margin-top: 20px;
+            position: relative;
+            z-index: 10;
+            text-shadow: 0 0 10px var(--holo-blue);
+            letter-spacing: 0.3em;
+            font-weight: 300;
+        }
+
+        /* Low Time Warning */
+        .timer-zone.low-time-30 {
+            animation: warning-pulse-30 1.5s ease-in-out infinite;
+        }
+
+        .timer-zone.low-time-10 {
+            animation: warning-pulse-10 0.8s ease-in-out infinite;
+        }
+
+        .timer-zone.low-time-10 .time-display {
+            color: #ff3366;
+            text-shadow:
+                0 0 20px #ff3366,
+                0 0 40px #ff3366,
+                0 0 60px #ff3366;
+        }
+
+        @keyframes warning-pulse-30 {
+            0%, 100% { border-color: rgba(0, 212, 255, 0.3); }
+            50% { border-color: rgba(255, 255, 0, 0.6); }
+        }
+
+        @keyframes warning-pulse-10 {
+            0%, 100% {
+                border-color: rgba(255, 51, 102, 0.8);
+                box-shadow: 0 0 60px #ff3366;
+            }
+            50% {
+                border-color: rgba(255, 0, 0, 0.8);
+                box-shadow: 0 0 90px #ff0000;
+            }
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            background: rgba(0, 8, 20, 0.9);
+            border: 2px solid var(--holo-blue);
+            border-bottom: none;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            z-index: 1000;
+            width: 90%;
+            max-width: 400px;
+            backdrop-filter: blur(20px);
+            box-shadow:
+                0 -5px 40px rgba(0, 212, 255, 0.6),
+                inset 0 0 30px rgba(0, 212, 255, 0.1);
+            transition: transform 0.4s ease;
+        }
+
+        .control-panel.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .control-toggle {
+            position: fixed;
+            bottom: 50%;
+            right: 10px;
+            transform: translateY(50%);
+            background: rgba(0, 8, 20, 0.9);
+            border: 2px solid var(--holo-blue);
+            color: var(--holo-cyan);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 10px 6px;
+            cursor: pointer;
+            z-index: 999;
+            border-radius: 5px 0 0 5px;
+            writing-mode: vertical-rl;
+            text-shadow: 0 0 10px var(--holo-blue);
+            backdrop-filter: blur(10px);
+            box-shadow: -2px 0 20px rgba(0, 212, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .control-toggle:hover {
+            background: rgba(0, 136, 204, 0.3);
+            box-shadow: -2px 0 30px rgba(0, 212, 255, 0.8);
+        }
+
+        .control-section {
+            margin-bottom: 15px;
+        }
+
+        .control-section h3 {
+            color: var(--holo-cyan);
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px var(--holo-blue);
+            letter-spacing: 0.3em;
+            font-weight: 300;
+        }
+
+        .control-section h3::before {
+            content: '◇ ';
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: rgba(0, 212, 255, 0.1);
+            border: 2px solid rgba(0, 212, 255, 0.4);
+            color: var(--holo-cyan);
+            font-family: 'Courier New', monospace;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 8px;
+            transition: all 0.3s;
+            text-shadow: 0 0 5px var(--holo-blue);
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+            flex: 1;
+            min-width: 70px;
+        }
+
+        button:hover {
+            background: rgba(0, 212, 255, 0.3);
+            border-color: var(--holo-blue);
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.active {
+            background: var(--holo-blue);
+            color: var(--dark-bg);
+            text-shadow: none;
+            box-shadow: 0 0 30px var(--holo-blue);
+        }
+
+        /* Winner Display */
+        .winner-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0, 8, 20, 0.95);
+            border: 3px solid var(--holo-cyan);
+            padding: 40px;
+            border-radius: 20px;
+            z-index: 10000;
+            text-align: center;
+            backdrop-filter: blur(20px);
+            box-shadow:
+                0 0 60px rgba(77, 255, 255, 0.9),
+                inset 0 0 40px rgba(0, 212, 255, 0.3);
+            transition: transform 0.5s ease;
+        }
+
+        .winner-display.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .winner-display h2 {
+            font-size: clamp(30px, 8vw, 50px);
+            color: var(--holo-white);
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            text-shadow:
+                0 0 20px var(--holo-blue),
+                0 0 40px var(--holo-cyan),
+                0 0 60px var(--holo-cyan);
+            letter-spacing: 0.4em;
+            font-weight: 300;
+            animation: victory-shimmer 2s ease-in-out infinite;
+        }
+
+        @keyframes victory-shimmer {
+            0%, 100% {
+                text-shadow:
+                    0 0 20px var(--holo-blue),
+                    0 0 40px var(--holo-cyan),
+                    0 0 60px var(--holo-cyan);
+            }
+            50% {
+                text-shadow:
+                    0 0 30px var(--holo-blue),
+                    0 0 50px var(--holo-cyan),
+                    0 0 70px var(--holo-white);
+            }
+        }
+
+        .winner-display p {
+            font-size: 18px;
+            color: var(--holo-cyan);
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 15px var(--holo-blue);
+        }
+
+        /* Gesture Hint */
+        .gesture-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: 300;
+            color: var(--holo-cyan);
+            text-shadow:
+                0 0 20px var(--holo-blue),
+                0 0 40px var(--holo-blue);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 9997;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <!-- Particle Field Canvas -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- Light Rays -->
+    <div class="light-ray" style="left: 20%; animation-delay: 0s;"></div>
+    <div class="light-ray" style="left: 50%; animation-delay: 3s;"></div>
+    <div class="light-ray" style="left: 80%; animation-delay: 6s;"></div>
+
+    <!-- Hologram Effects -->
+    <div class="holo-scan"></div>
+    <div class="glass-vignette"></div>
+
+    <!-- Timer Zones -->
+    <div class="timer-zone p1" data-player="1">
+        <div class="hex-frame h1"></div>
+        <div class="hex-frame h2"></div>
+        <div class="player-label">ENTITY_ONE</div>
+        <div class="time-display" id="time1">05:00</div>
+        <div class="status-info" id="moves1">ACTIONS: 0</div>
+    </div>
+
+    <div class="timer-zone p2" data-player="2">
+        <div class="hex-frame h1"></div>
+        <div class="hex-frame h2"></div>
+        <div class="player-label">ENTITY_TWO</div>
+        <div class="time-display" id="time2">05:00</div>
+        <div class="status-info" id="moves2">ACTIONS: 0</div>
+    </div>
+
+    <!-- Control Toggle -->
+    <button class="control-toggle" onclick="toggleControls()">INTERFACE</button>
+
+    <!-- Control Panel -->
+    <div class="control-panel" id="controlPanel">
+        <div class="control-section">
+            <h3>TIME PROTOCOL</h3>
+            <div class="btn-group">
+                <button onclick="setTime(60)">1m</button>
+                <button onclick="setTime(180)">3m</button>
+                <button onclick="setTime(300)">5m</button>
+                <button onclick="setTime(600)">10m</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>SYSTEM</h3>
+            <div class="btn-group">
+                <button onclick="togglePause()" id="pauseBtn">PAUSE</button>
+                <button onclick="resetGame()">RESET</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>CONFIG</h3>
+            <div class="btn-group">
+                <button onclick="toggleSound()" id="soundBtn" class="active">AUDIO</button>
+                <button onclick="toggleHaptic()" id="hapticBtn" class="active">HAPTIC</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Winner Display -->
+    <div class="winner-display" id="winnerDisplay">
+        <h2>◇ VICTORY ◇</h2>
+        <p id="winnerText">ENTITY ONE PREVAILS</p>
+        <button onclick="resetGame()">NEW SEQUENCE</button>
+    </div>
+
+    <!-- Gesture Hint -->
+    <div class="gesture-hint" id="gestureHint">SWIPE</div>
+
+    <script>
+        // Particle System
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particles = [];
+        const particleCount = 80;
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.size = Math.random() * 2 + 1;
+                this.opacity = Math.random() * 0.5 + 0.3;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 212, 255, ${this.opacity})`;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#00d4ff';
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+
+        animateParticles();
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Game State
+        let player1Time = 300;
+        let player2Time = 300;
+        let activePlayer = 0;
+        let isPaused = true;
+        let interval = null;
+        let player1Moves = 0;
+        let player2Moves = 0;
+        let soundEnabled = true;
+        let hapticEnabled = true;
+
+        // Touch gesture tracking
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        // Audio Context
+        let audioContext = null;
+
+        // Control Panel
+        function toggleControls() {
+            const panel = document.getElementById('controlPanel');
+            panel.classList.toggle('visible');
+        }
+
+        // Audio
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type = 'click') {
+            if (!soundEnabled) return;
+
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            if (type === 'click') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(500, audioContext.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.15);
+            } else if (type === 'win') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(523, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(784, audioContext.currentTime + 0.3);
+                oscillator.frequency.exponentialRampToValueAtTime(1047, audioContext.currentTime + 0.6);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.8);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundBtn').classList.toggle('active', soundEnabled);
+        }
+
+        function toggleHaptic() {
+            hapticEnabled = !hapticEnabled;
+            document.getElementById('hapticBtn').classList.toggle('active', hapticEnabled);
+        }
+
+        // Haptic feedback
+        function vibrate(pattern = 50) {
+            if (hapticEnabled && navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // Timer functions
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            document.getElementById('time1').textContent = formatTime(player1Time);
+            document.getElementById('time2').textContent = formatTime(player2Time);
+            document.getElementById('moves1').textContent = `ACTIONS: ${player1Moves}`;
+            document.getElementById('moves2').textContent = `ACTIONS: ${player2Moves}`;
+
+            const zone1 = document.querySelector('.timer-zone.p1');
+            const zone2 = document.querySelector('.timer-zone.p2');
+
+            zone1.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+            zone2.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+
+            if (activePlayer === 1) {
+                zone1.classList.add('active');
+                zone2.classList.add('inactive');
+                if (player1Time <= 10) zone1.classList.add('low-time-10');
+                else if (player1Time <= 30) zone1.classList.add('low-time-30');
+            } else if (activePlayer === 2) {
+                zone2.classList.add('active');
+                zone1.classList.add('inactive');
+                if (player2Time <= 10) zone2.classList.add('low-time-10');
+                else if (player2Time <= 30) zone2.classList.add('low-time-30');
+            } else {
+                zone1.classList.add('inactive');
+                zone2.classList.add('inactive');
+            }
+
+            if (player1Time <= 0) {
+                stopClock();
+                showWinner(2);
+            } else if (player2Time <= 0) {
+                stopClock();
+                showWinner(1);
+            }
+        }
+
+        function tick() {
+            if (activePlayer === 1) {
+                player1Time--;
+            } else if (activePlayer === 2) {
+                player2Time--;
+            }
+            updateDisplay();
+        }
+
+        function startClock() {
+            if (!interval && !isPaused) {
+                interval = setInterval(tick, 1000);
+            }
+        }
+
+        function stopClock() {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+            isPaused = true;
+            activePlayer = 0;
+            updatePauseButton();
+        }
+
+        function switchPlayer(player) {
+            if (player1Time <= 0 || player2Time <= 0) return;
+
+            if (activePlayer === player || activePlayer === 0) {
+                playSound('click');
+                vibrate(50);
+
+                if (activePlayer === 0) {
+                    activePlayer = player;
+                    isPaused = false;
+                } else {
+                    if (player === 1) player1Moves++;
+                    else player2Moves++;
+                    activePlayer = player === 1 ? 2 : 1;
+                }
+
+                if (!isPaused) {
+                    startClock();
+                }
+                updateDisplay();
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                stopClock();
+            } else if (activePlayer !== 0) {
+                startClock();
+            }
+            updatePauseButton();
+        }
+
+        function updatePauseButton() {
+            document.getElementById('pauseBtn').textContent = isPaused ? 'RESUME' : 'PAUSE';
+        }
+
+        function setTime(seconds) {
+            player1Time = seconds;
+            player2Time = seconds;
+            resetGame();
+        }
+
+        function resetGame() {
+            stopClock();
+            activePlayer = 0;
+            player1Moves = 0;
+            player2Moves = 0;
+            updateDisplay();
+            document.getElementById('winnerDisplay').classList.remove('show');
+        }
+
+        function showWinner(player) {
+            playSound('win');
+            vibrate([100, 50, 100, 50, 200]);
+            const entityName = player === 1 ? 'ENTITY ONE' : 'ENTITY TWO';
+            document.getElementById('winnerText').textContent = `${entityName} PREVAILS`;
+            document.getElementById('winnerDisplay').classList.add('show');
+        }
+
+        // Touch events
+        document.querySelectorAll('.timer-zone').forEach(zone => {
+            zone.addEventListener('touchstart', handleTouchStart, { passive: false });
+            zone.addEventListener('touchend', handleTouchEnd, { passive: false });
+            zone.addEventListener('click', (e) => {
+                e.preventDefault();
+                const player = parseInt(zone.dataset.player);
+                switchPlayer(player);
+            });
+        });
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            const player = parseInt(e.target.closest('.timer-zone').dataset.player);
+            switchPlayer(player);
+        }
+
+        // Initialize
+        updateDisplay();
+    </script>
+</body>
+</html>

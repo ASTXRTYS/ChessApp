@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MATRIX TERMINAL - Chess Clock</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --matrix-green: #00ff41;
+            --matrix-dark: #0d0208;
+            --matrix-dim: #003b00;
+            --glow: 0 0 5px var(--matrix-green),
+                    0 0 10px var(--matrix-green),
+                    0 0 20px var(--matrix-green);
+        }
+
+        @font-face {
+            font-family: 'Matrix';
+            src: local('Courier New'), local('Consolas'), local('monospace');
+        }
+
+        body {
+            font-family: 'Courier New', 'Consolas', monospace;
+            overflow: hidden;
+            touch-action: none;
+            background: var(--matrix-dark);
+            color: var(--matrix-green);
+        }
+
+        /* Matrix Rain Canvas */
+        #matrixCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.15;
+        }
+
+        /* Scanline effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 65, 0.03) 2px,
+                rgba(0, 255, 65, 0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+            animation: scanline-move 8s linear infinite;
+        }
+
+        @keyframes scanline-move {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(10px); }
+        }
+
+        /* CRT Vignette */
+        .crt-vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.7) 100%);
+            pointer-events: none;
+            z-index: 9998;
+        }
+
+        /* Timer Container */
+        .timer-zone {
+            height: 50vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid var(--matrix-dim);
+            transition: all 0.3s ease;
+        }
+
+        .timer-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 65, 0.02) 2px,
+                rgba(0, 255, 65, 0.02) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .timer-zone.active {
+            background: rgba(0, 59, 0, 0.3);
+            border-color: var(--matrix-green);
+            box-shadow: inset 0 0 50px rgba(0, 255, 65, 0.2),
+                        0 0 20px rgba(0, 255, 65, 0.3);
+        }
+
+        .timer-zone.inactive {
+            opacity: 0.4;
+        }
+
+        .timer-zone.p2 {
+            transform: rotate(180deg);
+        }
+
+        .timer-zone.p2.active {
+            transform: rotate(180deg);
+        }
+
+        /* Terminal Time Display */
+        .time-display {
+            font-size: clamp(70px, 20vw, 140px);
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            color: var(--matrix-green);
+            text-shadow: var(--glow);
+            font-variant-numeric: tabular-nums;
+            position: relative;
+            z-index: 10;
+            letter-spacing: 0.1em;
+            animation: text-flicker 3s infinite;
+        }
+
+        @keyframes text-flicker {
+            0%, 100% { opacity: 1; }
+            41.99% { opacity: 1; }
+            42% { opacity: 0.8; }
+            43% { opacity: 1; }
+            45.99% { opacity: 1; }
+            46% { opacity: 0.85; }
+            46.5% { opacity: 1; }
+        }
+
+        .timer-zone.active .time-display {
+            animation: text-flicker 3s infinite, pulse-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                text-shadow: var(--glow);
+                transform: scale(1);
+            }
+            50% {
+                text-shadow: 0 0 8px var(--matrix-green),
+                            0 0 15px var(--matrix-green),
+                            0 0 30px var(--matrix-green),
+                            0 0 40px var(--matrix-green);
+                transform: scale(1.02);
+            }
+        }
+
+        /* Terminal Prompt Style Label */
+        .player-label {
+            font-size: clamp(14px, 4vw, 20px);
+            font-family: 'Courier New', monospace;
+            color: var(--matrix-green);
+            margin-bottom: 10px;
+            opacity: 0.8;
+            position: relative;
+            z-index: 10;
+            text-shadow: 0 0 5px var(--matrix-green);
+        }
+
+        .player-label::before {
+            content: '> ';
+            animation: blink-cursor 1s step-end infinite;
+        }
+
+        @keyframes blink-cursor {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Status Info */
+        .status-info {
+            font-size: clamp(12px, 3vw, 16px);
+            font-family: 'Courier New', monospace;
+            color: var(--matrix-green);
+            opacity: 0.6;
+            margin-top: 10px;
+            position: relative;
+            z-index: 10;
+            text-shadow: 0 0 3px var(--matrix-green);
+        }
+
+        /* Low Time Warning */
+        .timer-zone.low-time-30 {
+            animation: warning-pulse-30 2s ease-in-out infinite;
+        }
+
+        .timer-zone.low-time-10 {
+            animation: warning-pulse-10 1s ease-in-out infinite;
+            border-color: #ff0000;
+        }
+
+        .timer-zone.low-time-10 .time-display {
+            color: #ff0000;
+            text-shadow: 0 0 5px #ff0000,
+                        0 0 10px #ff0000,
+                        0 0 20px #ff0000;
+        }
+
+        @keyframes warning-pulse-30 {
+            0%, 100% { background: rgba(0, 59, 0, 0.3); }
+            50% { background: rgba(255, 255, 0, 0.15); }
+        }
+
+        @keyframes warning-pulse-10 {
+            0%, 100% { background: rgba(255, 0, 0, 0.2); }
+            50% { background: rgba(255, 0, 0, 0.4); }
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid var(--matrix-green);
+            border-bottom: none;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            z-index: 1000;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 -5px 30px rgba(0, 255, 65, 0.5);
+            transition: transform 0.3s ease;
+        }
+
+        .control-panel.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .control-toggle {
+            position: fixed;
+            bottom: 50%;
+            right: 10px;
+            transform: translateY(50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid var(--matrix-green);
+            color: var(--matrix-green);
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 10px 6px;
+            cursor: pointer;
+            z-index: 999;
+            border-radius: 5px 0 0 5px;
+            writing-mode: vertical-rl;
+            text-shadow: 0 0 5px var(--matrix-green);
+            box-shadow: -2px 0 10px rgba(0, 255, 65, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .control-toggle:hover {
+            background: rgba(0, 59, 0, 0.9);
+            box-shadow: -2px 0 15px rgba(0, 255, 65, 0.5);
+        }
+
+        .control-section {
+            margin-bottom: 15px;
+        }
+
+        .control-section h3 {
+            color: var(--matrix-green);
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 5px var(--matrix-green);
+        }
+
+        .control-section h3::before {
+            content: '# ';
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: rgba(0, 59, 0, 0.5);
+            border: 1px solid var(--matrix-green);
+            color: var(--matrix-green);
+            font-family: 'Courier New', monospace;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 3px;
+            transition: all 0.2s;
+            text-shadow: 0 0 3px var(--matrix-green);
+            flex: 1;
+            min-width: 70px;
+        }
+
+        button:hover {
+            background: rgba(0, 255, 65, 0.2);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.active {
+            background: var(--matrix-green);
+            color: var(--matrix-dark);
+            text-shadow: none;
+        }
+
+        /* Winner Display */
+        .winner-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid var(--matrix-green);
+            padding: 40px;
+            border-radius: 10px;
+            z-index: 10000;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 255, 65, 0.8);
+            transition: transform 0.5s ease;
+        }
+
+        .winner-display.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .winner-display h2 {
+            font-size: clamp(30px, 8vw, 50px);
+            color: var(--matrix-green);
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            text-shadow: var(--glow);
+            animation: victory-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes victory-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .winner-display p {
+            font-size: 18px;
+            color: var(--matrix-green);
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Gesture Hint */
+        .gesture-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--matrix-green);
+            text-shadow: var(--glow);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 9997;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Matrix Code Animation */
+        .matrix-char {
+            position: absolute;
+            color: var(--matrix-green);
+            font-family: 'Courier New', monospace;
+            font-size: 20px;
+            opacity: 0;
+            animation: matrix-fall linear infinite;
+            text-shadow: 0 0 5px var(--matrix-green);
+            pointer-events: none;
+        }
+
+        @keyframes matrix-fall {
+            0% {
+                opacity: 0;
+                transform: translateY(-100%);
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(100vh);
+            }
+        }
+
+        /* Terminal Boot Text */
+        .boot-text {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Courier New', monospace;
+            color: var(--matrix-green);
+            text-shadow: 0 0 5px var(--matrix-green);
+            font-size: 16px;
+            z-index: 10001;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .boot-text.show {
+            animation: boot-sequence 2s ease-out forwards;
+        }
+
+        @keyframes boot-sequence {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Matrix Rain Canvas -->
+    <canvas id="matrixCanvas"></canvas>
+
+    <!-- CRT Effects -->
+    <div class="crt-vignette"></div>
+    <div class="scanlines"></div>
+
+    <!-- Timer Zones -->
+    <div class="timer-zone p1" data-player="1">
+        <div class="player-label">PLAYER_1.exe</div>
+        <div class="time-display" id="time1">05:00</div>
+        <div class="status-info" id="moves1">MOVES: 0</div>
+    </div>
+
+    <div class="timer-zone p2" data-player="2">
+        <div class="player-label">PLAYER_2.exe</div>
+        <div class="time-display" id="time2">05:00</div>
+        <div class="status-info" id="moves2">MOVES: 0</div>
+    </div>
+
+    <!-- Control Toggle -->
+    <button class="control-toggle" onclick="toggleControls()">TERMINAL</button>
+
+    <!-- Control Panel -->
+    <div class="control-panel" id="controlPanel">
+        <div class="control-section">
+            <h3>TIME_PRESETS</h3>
+            <div class="btn-group">
+                <button onclick="setTime(60)">1m</button>
+                <button onclick="setTime(180)">3m</button>
+                <button onclick="setTime(300)">5m</button>
+                <button onclick="setTime(600)">10m</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>CONTROLS</h3>
+            <div class="btn-group">
+                <button onclick="togglePause()" id="pauseBtn">PAUSE</button>
+                <button onclick="resetGame()">RESET</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>AUDIO_CONFIG</h3>
+            <div class="btn-group">
+                <button onclick="toggleSound()" id="soundBtn" class="active">SOUND: ON</button>
+                <button onclick="toggleHaptic()" id="hapticBtn" class="active">HAPTIC: ON</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Winner Display -->
+    <div class="winner-display" id="winnerDisplay">
+        <h2>SYSTEM VICTORY</h2>
+        <p id="winnerText">PLAYER 1 WINS</p>
+        <button onclick="resetGame()">RESET TERMINAL</button>
+    </div>
+
+    <!-- Gesture Hint -->
+    <div class="gesture-hint" id="gestureHint">SWIPE</div>
+
+    <!-- Boot Text -->
+    <div class="boot-text" id="bootText"></div>
+
+    <script>
+        // Matrix Rain Effect
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()';
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = Array(Math.floor(columns)).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#00ff41';
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        setInterval(drawMatrix, 33);
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Game State
+        let player1Time = 300;
+        let player2Time = 300;
+        let activePlayer = 0;
+        let isPaused = true;
+        let interval = null;
+        let player1Moves = 0;
+        let player2Moves = 0;
+        let soundEnabled = true;
+        let hapticEnabled = true;
+
+        // Touch gesture tracking
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        // Audio Context
+        let audioContext = null;
+
+        // Boot sequence
+        window.addEventListener('load', () => {
+            const bootText = document.getElementById('bootText');
+            bootText.innerHTML = `
+                > INITIALIZING MATRIX TERMINAL...<br>
+                > LOADING CHESS_CLOCK.SYS...<br>
+                > SYSTEM READY
+            `;
+            bootText.classList.add('show');
+            setTimeout(() => {
+                bootText.classList.remove('show');
+            }, 2000);
+        });
+
+        // Control Panel
+        function toggleControls() {
+            const panel = document.getElementById('controlPanel');
+            panel.classList.toggle('visible');
+        }
+
+        // Audio
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type = 'click') {
+            if (!soundEnabled) return;
+
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            if (type === 'click') {
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'win') {
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.5);
+                gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.7);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.7);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundBtn').textContent = soundEnabled ? 'SOUND: ON' : 'SOUND: OFF';
+            document.getElementById('soundBtn').classList.toggle('active', soundEnabled);
+        }
+
+        function toggleHaptic() {
+            hapticEnabled = !hapticEnabled;
+            document.getElementById('hapticBtn').textContent = hapticEnabled ? 'HAPTIC: ON' : 'HAPTIC: OFF';
+            document.getElementById('hapticBtn').classList.toggle('active', hapticEnabled);
+        }
+
+        // Haptic feedback
+        function vibrate(pattern = 50) {
+            if (hapticEnabled && navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // Timer functions
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            document.getElementById('time1').textContent = formatTime(player1Time);
+            document.getElementById('time2').textContent = formatTime(player2Time);
+            document.getElementById('moves1').textContent = `MOVES: ${player1Moves}`;
+            document.getElementById('moves2').textContent = `MOVES: ${player2Moves}`;
+
+            const zone1 = document.querySelector('.timer-zone.p1');
+            const zone2 = document.querySelector('.timer-zone.p2');
+
+            zone1.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+            zone2.classList.remove('active', 'inactive', 'low-time-30', 'low-time-10');
+
+            if (activePlayer === 1) {
+                zone1.classList.add('active');
+                zone2.classList.add('inactive');
+                if (player1Time <= 10) zone1.classList.add('low-time-10');
+                else if (player1Time <= 30) zone1.classList.add('low-time-30');
+            } else if (activePlayer === 2) {
+                zone2.classList.add('active');
+                zone1.classList.add('inactive');
+                if (player2Time <= 10) zone2.classList.add('low-time-10');
+                else if (player2Time <= 30) zone2.classList.add('low-time-30');
+            } else {
+                zone1.classList.add('inactive');
+                zone2.classList.add('inactive');
+            }
+
+            if (player1Time <= 0) {
+                stopClock();
+                showWinner(2);
+            } else if (player2Time <= 0) {
+                stopClock();
+                showWinner(1);
+            }
+        }
+
+        function tick() {
+            if (activePlayer === 1) {
+                player1Time--;
+            } else if (activePlayer === 2) {
+                player2Time--;
+            }
+            updateDisplay();
+        }
+
+        function startClock() {
+            if (!interval && !isPaused) {
+                interval = setInterval(tick, 1000);
+            }
+        }
+
+        function stopClock() {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+            isPaused = true;
+            activePlayer = 0;
+            updatePauseButton();
+        }
+
+        function switchPlayer(player) {
+            if (player1Time <= 0 || player2Time <= 0) return;
+
+            if (activePlayer === player || activePlayer === 0) {
+                playSound('click');
+                vibrate(50);
+
+                if (activePlayer === 0) {
+                    activePlayer = player;
+                    isPaused = false;
+                } else {
+                    if (player === 1) player1Moves++;
+                    else player2Moves++;
+                    activePlayer = player === 1 ? 2 : 1;
+                }
+
+                if (!isPaused) {
+                    startClock();
+                }
+                updateDisplay();
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                stopClock();
+            } else if (activePlayer !== 0) {
+                startClock();
+            }
+            updatePauseButton();
+        }
+
+        function updatePauseButton() {
+            document.getElementById('pauseBtn').textContent = isPaused ? 'RESUME' : 'PAUSE';
+        }
+
+        function setTime(seconds) {
+            player1Time = seconds;
+            player2Time = seconds;
+            resetGame();
+        }
+
+        function resetGame() {
+            stopClock();
+            activePlayer = 0;
+            player1Moves = 0;
+            player2Moves = 0;
+            updateDisplay();
+            document.getElementById('winnerDisplay').classList.remove('show');
+        }
+
+        function showWinner(player) {
+            playSound('win');
+            vibrate([100, 50, 100, 50, 200]);
+            document.getElementById('winnerText').textContent = `PLAYER ${player} WINS`;
+            document.getElementById('winnerDisplay').classList.add('show');
+        }
+
+        // Touch events
+        document.querySelectorAll('.timer-zone').forEach(zone => {
+            zone.addEventListener('touchstart', handleTouchStart, { passive: false });
+            zone.addEventListener('touchend', handleTouchEnd, { passive: false });
+            zone.addEventListener('click', (e) => {
+                e.preventDefault();
+                const player = parseInt(zone.dataset.player);
+                switchPlayer(player);
+            });
+        });
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            const player = parseInt(e.target.closest('.timer-zone').dataset.player);
+            switchPlayer(player);
+        }
+
+        // Initialize
+        updateDisplay();
+    </script>
+</body>
+</html>

@@ -157,6 +157,46 @@
             text-shadow: 0 0 12px currentColor, 0 0 24px rgba(255, 0, 110, 0.65);
         }
 
+        .preview-matrix {
+            background: #0d0208;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            text-shadow: 0 0 10px currentColor, 0 0 20px rgba(0, 255, 65, 0.7);
+        }
+
+        .preview-neon-grid {
+            background: #0a0014;
+            color: #00f5ff;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            text-shadow: 0 0 10px currentColor, 0 0 20px rgba(0, 245, 255, 0.7);
+        }
+
+        .preview-tactical {
+            background: #0a0600;
+            color: #ff9500;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            text-shadow: 0 0 10px currentColor, 0 0 20px rgba(255, 149, 0, 0.7);
+        }
+
+        .preview-hologram {
+            background: #000814;
+            color: #00d4ff;
+            font-family: 'Courier New', monospace;
+            font-weight: 300;
+            text-shadow: 0 0 10px currentColor, 0 0 20px rgba(0, 212, 255, 0.7);
+        }
+
+        .preview-glitch {
+            background: #0d0015;
+            color: #ff00ff;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            text-shadow: -2px 0 #00ffff, 2px 0 #00ff00, 0 0 10px currentColor;
+        }
+
         .card-info {
             padding: 22px 24px 26px;
         }
@@ -399,6 +439,86 @@
                         </div>
                     </div>
                 </button>
+
+                <button class="design-card" type="button" data-design="matrix" role="tab" aria-selected="false" aria-pressed="false">
+                    <div class="card-preview preview-matrix">█▓▒░</div>
+                    <div class="card-info">
+                        <div class="card-title">Matrix Rain</div>
+                        <div class="card-description">
+                            Cascading code, green phosphor CRT, terminal boot sequence.
+                        </div>
+                        <div class="features">
+                            <span class="feature-tag">Matrix Canvas</span>
+                            <span class="feature-tag">CRT Glow</span>
+                            <span class="feature-tag">Terminal FX</span>
+                            <span class="feature-tag">Boot Seq</span>
+                        </div>
+                    </div>
+                </button>
+
+                <button class="design-card" type="button" data-design="neon-grid" role="tab" aria-selected="false" aria-pressed="false">
+                    <div class="card-preview preview-neon-grid">◆◇◆</div>
+                    <div class="card-info">
+                        <div class="card-title">Neon Grid</div>
+                        <div class="card-description">
+                            80s synthwave, perspective grid, starfield, laser sweeps.
+                        </div>
+                        <div class="features">
+                            <span class="feature-tag">Grid Floor</span>
+                            <span class="feature-tag">Starfield</span>
+                            <span class="feature-tag">Laser FX</span>
+                            <span class="feature-tag">Synthwave</span>
+                        </div>
+                    </div>
+                </button>
+
+                <button class="design-card" type="button" data-design="tactical" role="tab" aria-selected="false" aria-pressed="false">
+                    <div class="card-preview preview-tactical">[TARGET]</div>
+                    <div class="card-info">
+                        <div class="card-title">Tactical</div>
+                        <div class="card-description">
+                            Military amber CRT, radar sweep, target lock, HUD overlays.
+                        </div>
+                        <div class="features">
+                            <span class="feature-tag">Radar</span>
+                            <span class="feature-tag">Target Lock</span>
+                            <span class="feature-tag">Amber Glow</span>
+                            <span class="feature-tag">HUD Grid</span>
+                        </div>
+                    </div>
+                </button>
+
+                <button class="design-card" type="button" data-design="hologram" role="tab" aria-selected="false" aria-pressed="false">
+                    <div class="card-preview preview-hologram">◇</div>
+                    <div class="card-info">
+                        <div class="card-title">Holographic</div>
+                        <div class="card-description">
+                            Sci-fi hologram, floating particles, light rays, glass morphism.
+                        </div>
+                        <div class="features">
+                            <span class="feature-tag">Particles</span>
+                            <span class="feature-tag">Light Rays</span>
+                            <span class="feature-tag">Holo Scan</span>
+                            <span class="feature-tag">Glass FX</span>
+                        </div>
+                    </div>
+                </button>
+
+                <button class="design-card" type="button" data-design="glitch" role="tab" aria-selected="false" aria-pressed="false">
+                    <div class="card-preview preview-glitch">▣ER▣OR</div>
+                    <div class="card-info">
+                        <div class="card-title">Glitch</div>
+                        <div class="card-description">
+                            Data corruption, RGB split, pixel blocks, digital noise.
+                        </div>
+                        <div class="features">
+                            <span class="feature-tag">RGB Split</span>
+                            <span class="feature-tag">Noise Gen</span>
+                            <span class="feature-tag">Corruption</span>
+                            <span class="feature-tag">Distortion</span>
+                        </div>
+                    </div>
+                </button>
             </div>
 
             <section class="design-shell" aria-live="polite">
@@ -424,7 +544,7 @@
         </div>
 
         <footer>
-            Built as four standalone single-file apps. This gallery simply hosts them side-by-side.
+            Built as nine standalone single-file apps (4 original designs + 5 terminal hacker variants). This gallery hosts them side-by-side for easy comparison.
         </footer>
     </div>
 
@@ -449,6 +569,31 @@
                 name: 'Cyberpunk Neon',
                 description: 'Neon glow, CRT scanlines, glitch energy, and arcade intensity.',
                 path: './cyberpunk/index.html'
+            },
+            'matrix': {
+                name: 'Matrix Rain Terminal',
+                description: 'Cascading code, green phosphor CRT, and terminal aesthetics.',
+                path: './terminal-matrix/index.html'
+            },
+            'neon-grid': {
+                name: 'Neon Grid Terminal',
+                description: '80s synthwave grid, starfield particles, and laser sweeps.',
+                path: './terminal-neon-grid/index.html'
+            },
+            'tactical': {
+                name: 'Tactical Terminal',
+                description: 'Military amber CRT, radar sweep, target lock, and HUD.',
+                path: './terminal-tactical/index.html'
+            },
+            'hologram': {
+                name: 'Holographic Terminal',
+                description: 'Futuristic sci-fi hologram with floating particles and light rays.',
+                path: './terminal-hologram/index.html'
+            },
+            'glitch': {
+                name: 'Glitch Terminal',
+                description: 'Cyberpunk data corruption, RGB split, and digital noise.',
+                path: './terminal-glitch/index.html'
             }
         };
 
